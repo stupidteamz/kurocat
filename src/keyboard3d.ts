@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import {
+  type KeyboardLang,
+  getKeyLabel,
   getKeyboardLayout,
   resolveKeyByVk,
   type KeyboardLayoutId,
@@ -559,6 +561,7 @@ export class KeyboardAndMouse3D {
 
   private layoutId: KeyboardLayoutId = '65';
   private orientation: KeyboardOrientation = 'cat';
+  private keyboardLang: KeyboardLang = 'en';
   private hitColor = new THREE.Color('#d4f044');
   private rightBtnColor = new THREE.Color('#ff7b3b');
   private boardH = 0.115;
@@ -799,7 +802,7 @@ export class KeyboardAndMouse3D {
     this.mouseBodyMat.needsUpdate = true;
   }
 
-  public rebuildBoard(layoutId: KeyboardLayoutId, orientation: KeyboardOrientation): void {
+  public rebuildBoard(layoutId: KeyboardLayoutId, orientation: KeyboardOrientation, keyboardLang: KeyboardLang = 'en'): void {
     // Skip redundant rebuild if nothing changed and meshes already exist
     if (this.sideInstanced && this.layoutId === layoutId && this.orientation === orientation) {
       return;
@@ -807,6 +810,7 @@ export class KeyboardAndMouse3D {
 
     this.layoutId = layoutId;
     this.orientation = orientation;
+    this.keyboardLang = keyboardLang;
     this.keys.clear();
     this.activeKeys.clear();
 
@@ -918,7 +922,7 @@ export class KeyboardAndMouse3D {
             : this.sideColorBase,
       );
 
-      const legendText = spec.id === 'space' ? '' : spec.id === 'esc' ? 'Esc' : spec.label;
+      const legendText = spec.id === 'space' ? '' : spec.id === 'esc' ? 'Esc' : getKeyLabel(spec, this.keyboardLang);
       const rect = atlas.rects.get(`${legendText}|${accent}`) ?? [0, 0, 0.1, 0.1];
       uvRects[i * 4] = rect[0];
       uvRects[i * 4 + 1] = rect[1];

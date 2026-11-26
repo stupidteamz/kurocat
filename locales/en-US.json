@@ -70,7 +70,9 @@
     "check_update": "Check Update v{ver}",
     "update_ready": "Update v{ver}",
     "checking_short": "Checking...",
-    "quit": "Quit"
+    "quit": "Quit",
+    "kb_lang_en": "English",
+    "kb_lang_th": "ไทย"
   },
   "breeds": {
     "black": "Black Cat",

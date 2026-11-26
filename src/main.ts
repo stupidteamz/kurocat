@@ -45,6 +45,7 @@ interface AppSettings {
   mcpEnabled: boolean;
   mcpPort: number;
   keyboardLayout: KeyboardLayoutId;
+  keyboardLang?: 'en' | 'th';
   keyboardOrientation: KeyboardOrientation;
   privacyPasswordGuard: boolean;
   tailKeyMode: TailKeyMode;
@@ -145,6 +146,7 @@ let settings: AppSettings = {
   mcpEnabled: true,
   mcpPort: 27420,
   keyboardLayout: '65',
+  keyboardLang: 'en',
   keyboardOrientation: 'cat',
   privacyPasswordGuard: true,
   tailKeyMode: 'smart',
@@ -314,6 +316,7 @@ function syncEngine3DState(): void {
   if (!engine3d) return;
   const activeCat = catList.find((c) => c.id === settings.catBreed) ?? catList[0];
   const kbLayout: KeyboardLayoutId = settings.keyboardLayout === '108' ? '108' : '65';
+  const kbLang: 'en' | 'th' = settings.keyboardLang === 'th' ? 'th' : 'en';
   const kbOrient: KeyboardOrientation = settings.keyboardOrientation === 'viewer' ? 'viewer' : 'cat';
   const tailMode: TailKeyMode =
     settings.tailKeyMode === 'custom' ||
@@ -338,7 +341,7 @@ function syncEngine3DState(): void {
   engine3d.setCollar(collar);
   engine3d.setHeadphones(shouldWearHeadphonesNow());
   engine3d.setGameActive(gameActive);
-  engine3d.setKeyboardConfig(kbLayout, kbOrient);
+  engine3d.setKeyboardConfig(kbLayout, kbOrient, kbLang);
   engine3d.setTailKeyConfig(tailMode, tailIds);
   engine3d.setPrivacyMode(privacyActive);
   engine3d.setFpsCap(settings.fpsCap === 30 ? 30 : 0);
@@ -485,6 +488,7 @@ function syncMenuUI(): void {
   }
 
   const kbLayout: KeyboardLayoutId = settings.keyboardLayout === '108' ? '108' : '65';
+  const kbLang: 'en' | 'th' = settings.keyboardLang === 'th' ? 'th' : 'en';
   const kbOrient: KeyboardOrientation = settings.keyboardOrientation === 'viewer' ? 'viewer' : 'cat';
   const tailMode: TailKeyMode =
     settings.tailKeyMode === 'custom' ||
@@ -570,7 +574,7 @@ function syncMenuUI(): void {
   engine.showKeyBubbles = settings.showKeyBubbles;
   engine.setCatAppearance(activeCat?.id || 'black', activeCat);
   engine.setHeadphones(shouldWearHeadphonesNow());
-  engine.setKeyboardConfig(kbLayout, kbOrient);
+  engine.setKeyboardConfig(kbLayout, kbOrient, kbLang);
   engine.setTailKeyConfig(tailMode, tailIds);
   engine.setFpsCap(fpsCapNum);
   engine3d?.setFpsCap(fpsCapNum);

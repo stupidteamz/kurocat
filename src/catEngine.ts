@@ -5,6 +5,8 @@ import {
   type KeySpec,
   type KeyboardLayoutId,
   formatBubbleForVk,
+  type KeyboardLang,
+  getKeyLabel,
   resolveKeyByVk,
 } from './keyboardLayout';
 import { catAudio } from './audio';
@@ -246,6 +248,7 @@ export class KuroCatEngine {
   public customSkin: ResolvedSkin | null = null;
   public keyboardLayout: KeyboardLayoutId = '65';
   public keyboardOrientation: KeyboardOrientation = 'cat';
+  public keyboardLang: KeyboardLang = 'en';
   public tailKeyMode: TailKeyMode = 'smart';
   private tailKeyIdSet = new Set<string>(DEFAULT_TAIL_KEY_IDS);
   private tailPickerActive = false;
@@ -620,7 +623,8 @@ export class KuroCatEngine {
     }
   }
 
-  public setKeyboardConfig(layout: KeyboardLayoutId, orientation: KeyboardOrientation): void {
+  public setKeyboardConfig(layout: KeyboardLayoutId, orientation: KeyboardOrientation, keyboardLang: KeyboardLang = 'en'): void {
+    this.keyboardLang = keyboardLang;
     const nextLayout: KeyboardLayoutId = layout === '108' ? '108' : '65';
     const nextOrientation: KeyboardOrientation = orientation === 'viewer' ? 'viewer' : 'cat';
     const layoutChanged = this.keyboardLayout !== nextLayout;
@@ -1231,7 +1235,7 @@ export class KuroCatEngine {
       const pt = dafeiyuUseTail ? this.getTailTargetPoint(spec) : rawKeyPt;
       this.dafeiyu.onKeyDown(vk, pt, dafeiyuLayout, repeat, dafeiyuUseTail);
       if (this.showKeyBubbles) {
-        const label = formatBubbleForVk(vk, spec);
+        const label = formatBubbleForVk(vk, spec, this.keyboardLang);
         if (label) {
           this.spawnBubble(label, spec.id === 'space', pt.x, now);
         }
@@ -1287,7 +1291,7 @@ export class KuroCatEngine {
       }
 
       if (this.showKeyBubbles) {
-        const label = formatBubbleForVk(vk, spec);
+        const label = formatBubbleForVk(vk, spec, this.keyboardLang);
         if (label) {
           this.spawnBubble(label, spec.id === 'space', clampedTailPt.x, now);
         }
@@ -1372,7 +1376,7 @@ export class KuroCatEngine {
     }
 
     if (this.showKeyBubbles) {
-      const label = formatBubbleForVk(vk, spec);
+      const label = formatBubbleForVk(vk, spec, this.keyboardLang);
       if (label) {
         this.spawnBubble(label, spec.id === 'space', targetPoint.x, now);
       }
@@ -3794,7 +3798,7 @@ export class KuroCatEngine {
         targetCtx.restore();
       }
 
-      const legend = key.id === 'space' ? (isTailSelected ? '␣' : '') : key.id === 'esc' ? 'Esc' : key.label;
+      const legend = key.id === 'space' ? (isTailSelected ? '␣' : '') : key.id === 'esc' ? 'Esc' : getKeyLabel(key, this.keyboardLang);
       if (legend) {
         const isWideWord = legend.length >= 3;
         const fontSize = is108

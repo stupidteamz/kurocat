@@ -5,7 +5,7 @@ import {
   type CatEarShape,
   type CatSkinConfig,
 } from './catSkins';
-import type { KeyboardLayoutId } from './keyboardLayout';
+import type { KeyboardLayoutId, KeyboardLang } from './keyboardLayout';
 import type { KeyboardOrientation, TailKeyMode } from './catEngine';
 import { DEFAULT_TAIL_KEY_IDS } from './catEngine';
 import { catAudio } from './audio';
@@ -547,6 +547,7 @@ export class KuroCatEngine3D {
   private readonly scene = new THREE.Scene();
   private readonly camera: THREE.PerspectiveCamera;
   private readonly desk: KeyboardAndMouse3D;
+  private keyboardLang: KeyboardLang = 'en';
   private readonly furSystem = new FurShaderSystem();
 
   private readonly catRoot = new THREE.Group();
@@ -1965,8 +1966,9 @@ export class KuroCatEngine3D {
     }
   }
 
-  public setKeyboardConfig(layout: KeyboardLayoutId, orient: KeyboardOrientation): void {
-    this.desk.rebuildBoard(layout, orient);
+  public setKeyboardConfig(layout: KeyboardLayoutId, orient: KeyboardOrientation, keyboardLang: KeyboardLang = 'en'): void {
+    this.keyboardLang = keyboardLang;
+    this.desk.rebuildBoard(layout, orient, this.keyboardLang);
     this.paws.L.keyId = null;
     this.paws.R.keyId = null;
     this.tailTap.keyId = null;

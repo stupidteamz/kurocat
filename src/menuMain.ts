@@ -26,6 +26,7 @@ interface AppSettings {
   mcpEnabled: boolean;
   mcpPort: number;
   keyboardLayout: KeyboardLayoutId;
+  keyboardLang?: 'en' | 'th';
   keyboardOrientation: KeyboardOrientation;
   privacyPasswordGuard: boolean;
   tailKeyMode: TailKeyMode;
@@ -74,6 +75,7 @@ let settings: AppSettings = {
   mcpEnabled: true,
   mcpPort: 27420,
   keyboardLayout: '65',
+  keyboardLang: 'en',
   keyboardOrientation: 'cat',
   privacyPasswordGuard: true,
   tailKeyMode: 'smart',
@@ -236,6 +238,11 @@ function syncUI(): void {
   });
   document.querySelectorAll<HTMLButtonElement>('[data-kborient]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.kborient === kbOrient);
+  });
+
+  const kbLang = settings.keyboardLang === 'th' ? 'th' : 'en';
+  document.querySelectorAll<HTMLButtonElement>('[data-kblang]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.kblang === kbLang);
   });
 
   const fpsCap = settings.fpsCap === 30 ? '30' : '0';
@@ -493,7 +500,7 @@ async function bootstrap(): Promise<void> {
     }
 
     const target = (e.target as HTMLElement).closest<HTMLElement>(
-      '[data-action], [data-breed], [data-rendermode], [data-collar], [data-headphonemode], [data-kblayout], [data-kborient], [data-tailmode], [data-fpscap], [data-lang]',
+      '[data-action], [data-breed], [data-rendermode], [data-collar], [data-headphonemode], [data-kblayout], [data-kborient], [data-kblang], [data-tailmode], [data-fpscap], [data-lang]',
     );
     if (!target) return;
 
@@ -543,6 +550,12 @@ async function bootstrap(): Promise<void> {
       const kbOrientAttr = target.dataset.kborient;
       if (kbOrientAttr === 'cat' || kbOrientAttr === 'viewer') {
         void applySettingsPatch({ keyboardOrientation: kbOrientAttr });
+        return;
+      }
+
+      const kbLangAttr = target.dataset.kblang;
+      if (kbLangAttr === 'en' || kbLangAttr === 'th') {
+        void applySettingsPatch({ keyboardLang: kbLangAttr });
         return;
       }
 
