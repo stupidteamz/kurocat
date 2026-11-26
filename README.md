@@ -14,6 +14,8 @@
   <img src="https://img.shields.io/badge/Platform-Win11%2F10%2F7%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-818cf8?style=flat-square" alt="Cross Platform" />
 </p>
 
+> 🔒 **官方唯一正版渠道**：[GitHub 仓库](https://github.com/qianyiai/kurocat) · [官方主页 qianyi.one/kurocat](https://qianyi.one/kurocat/) · [官方 Homebrew Tap](https://github.com/qianyiai/homebrew-tap)（第三方镜像域名非官方维护，请认准官方发布源）
+
 > 🌐 **官方网站与网页端在线试玩 / 国内高速下载**：[**https://qianyi.one/kurocat/**](https://qianyi.one/kurocat/)
 > 🇺🇸 **KuroCat** is a lightweight, transparent, always-on-top **open-source desktop typing cat companion (Bongo Cat alternative)** for Windows, macOS, Linux & Android — built with **Tauri v2 + Rust**, featuring 6 hand-crafted cats + BigFish whale-girl, native **OBS transparent Browser Source**, password privacy guard, and a built-in **MCP server** for AI cat creation. ([Read in English →](./README.en.md))
 

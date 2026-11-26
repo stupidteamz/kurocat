@@ -14,6 +14,8 @@
   <img src="https://img.shields.io/badge/Platform-Win11%2F10%2F7%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-818cf8?style=flat-square" alt="Cross Platform" />
 </p>
 
+> 🔒 **公式配布元のみ**：[GitHub リポジトリ](https://github.com/qianyiai/kurocat) · [公式サイト (qianyi.one/kurocat)](https://qianyi.one/kurocat/?lang=ja) · [公式 Homebrew Tap](https://github.com/qianyiai/homebrew-tap)（外部ミラーサイトは非公式ですので必ず公式ソースから入手してください）
+
 > 🌐 **公式サイト・ブラウザ体験版・高速ダウンロード**：[**https://qianyi.one/kurocat/**](https://qianyi.one/kurocat/)（[日本語 UI](https://qianyi.one/kurocat/?lang=ja)）
 
 **Windows（Win11/10 & Win7 SP1）/ macOS（10.15+ Apple Silicon & Intel）/ Linux（Ubuntu / Debian / KylinOS / UOS）** 対応の軽量・透過・最前面デスクトップタイピング猫コンパニオンです。**Tauri v2（Rust ネイティブグローバルフック + 内蔵 MCP サーバー + Three.js 3D / HTML5 Canvas 2D デュアルエンジン）** で構築され、外部ランタイム不要・約 24 MB の軽快動作を実現。初期設定の **✨ 3D フィギュアモード** と **🎨 2D クラシック手描き** をワンクリックで切替でき、**手描き猫スキン 6 種 + 🐳 クジラ娘（BigFish）**、**選択式 3D 首輪ベル＆ゲーム自動検出ゲーミングヘッドセット（初期設定はいずれも OFF）**、**パスワード入力時の自動目閉じ・目隠しガード**、**しっぽタイピングの 4 モード＆キー直接指定**、**OBS 透過ブラウザソース内蔵**、さらに **MCP プロトコル対応** で愛猫の写真から AI が一言で専用ペットを作成できます（3D/2D でカスタム模様 `spots[]` を 1:1 同期）。

@@ -14,6 +14,8 @@
   <img src="https://img.shields.io/badge/Platform-Win11%2F10%2F7%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-818cf8?style=flat-square" alt="Cross Platform" />
 </p>
 
+> 🔒 **Official Channels Only**: [GitHub Repository](https://github.com/qianyiai/kurocat) · [Official Website (qianyi.one/kurocat)](https://qianyi.one/kurocat/?lang=en) · [Official Homebrew Tap](https://github.com/qianyiai/homebrew-tap) *(Third-party domains are unaffiliated mirrors — always download from official sources.)*
+
 > 🌐 **Official Website, Live Web Playground & Fast Downloads**: [**https://qianyi.one/kurocat/**](https://qianyi.one/kurocat/) ([English UI](https://qianyi.one/kurocat/?lang=en))
 
 A lightweight, transparent, always-on-top desktop typing & mouse companion for **Windows (Win11/10 & Win7 SP1) / macOS (10.15+ Apple Silicon & Intel) / Linux (Ubuntu / Debian / KylinOS / UOS)** — built with **Tauri v2 (native Rust global hooks + built-in MCP server + Three.js 3D / HTML5 Canvas 2D dual engine)**. Zero external runtime dependencies, ~24 MB RAM footprint. Defaults to **✨ 3D Volumetric Figurine Mode** with one-click switching to **🎨 2D Classic Hand-Drawn**, and ships out of the box with **6 hand-crafted cat skins + 🐳 BigFish (whale-girl)** (Classic Black Cat, Ragdoll, Orange Tabby, Calico, Tuxedo, Siamese, and BigFish), **optional 3D collar bells & gaming headset (auto-equips in PC games, both off by default)**, **system-level password privacy guard**, **4 customizable tail-key patting modes**, **native OBS transparent Browser Source**, and a **built-in MCP server** so AI can create your own cat from a photo in one sentence (with 1:1 `spots[]` markings synced across 3D & 2D)!

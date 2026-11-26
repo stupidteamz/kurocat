@@ -86,9 +86,9 @@ export interface KuroCatI18nBundle {
 export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
   zh: {
     htmlLang: 'zh-CN',
-    docTitle: 'KuroCat · 免费开源桌面打字小黑猫桌宠（Win/Mac/Linux/Android · OBS · AI 捏猫）— 谦一',
+    docTitle: 'KuroCat — Free Open-Source 3D Desktop Typing Cat & AI Companion | 官方主页 (Win/Mac/Linux/Android)',
     metaDesc:
-      'KuroCat 是一款免费开源、轻量透明置顶的桌面打字猫咪伴侣（Desktop Typing Cat / Bongo Cat 开源替代），支持 Windows 11/10/7、macOS、Linux 与 Android。内置 6 款手绘猫咪 + 大肥鱼鲸鱼娘、自定义尾巴拍键、OBS 原生透明直播源、输密码自动闭眼防偷窥与内置 MCP 协议 AI 捏猫。',
+      'KuroCat (github.com/qianyiai/kurocat) — 免费开源 3D/2D 透明置顶桌面打字小黑猫与 AI 编程伴侣（Bongo Cat 开源替代）。支持 Windows/macOS(Homebrew)/Linux/Android，6 款猫咪 + 大肥鱼、Claude/Codex/DeepSeek/豆包状态联动、OBS 免抠像透明源、输密码自动闭眼防偷窥与 MCP AI 捏猫。',
     text: {
       'nav.back': '← 谦一',
       'nav.playground': '在线试玩',
@@ -371,9 +371,9 @@ export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
 
   en: {
     htmlLang: 'en',
-    docTitle: 'KuroCat — Free Open-Source Desktop Typing Cat Pet (Bongo Cat Alternative for Win/Mac/Linux/OBS)',
+    docTitle: 'KuroCat — Free Open-Source 3D Desktop Typing Cat & AI Companion | Official Website (Win/Mac/Linux/Android)',
     metaDesc:
-      'KuroCat is a free open-source, lightweight transparent always-on-top desktop typing & mouse cat companion (Bongo Cat alternative) for Windows, macOS, Linux & Android: 6 hand-crafted cats + BigFish whale-girl, password privacy guard, customizable tail keys, native OBS transparent source, 65%/108-key layouts & built-in MCP AI skin studio.',
+      'KuroCat (github.com/qianyiai/kurocat) — Free open-source 3D/2D transparent desktop typing cat & AI coding companion (Bongo Cat alternative) for Windows, macOS (Homebrew), Linux & Android: 6 cats + BigFish, Claude/Codex/DeepSeek status sync, OBS transparent source, password privacy guard & built-in MCP AI studio.',
     text: {
       'nav.back': '← Qianyi',
       'nav.playground': 'Playground',
@@ -656,9 +656,9 @@ export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
 
   ja: {
     htmlLang: 'ja',
-    docTitle: 'KuroCat · 無料オープンソースのデスクトップタイピング黒猫ペット（Win/Mac/Linux/OBS対応）',
+    docTitle: 'KuroCat — 無料オープンソース 3D デスクトップタイピング黒猫 & AI コンパニオン | 公式サイト (Win/Mac/Linux/Android)',
     metaDesc:
-      'KuroCat は Windows / macOS / Linux / Android 対応の無料オープンソース透過デスクトップタイピング黒猫ペット（Bongo Cat 代替）。手描き猫 6 種＋クジラ娘、パスワード自動目隠し保護、しっぽキー指定、OBS 透過ソース、65%/108 キー切替、内蔵 MCP AI スキン生成に対応。',
+      'KuroCat (github.com/qianyiai/kurocat) — Windows / macOS (Homebrew) / Linux / Android 対応の無料オープンソース 3D/2D 透過デスクトップタイピング黒猫＆AI コーディングコンパニオン（Bongo Cat 代替）。猫 6 種＋クジラ娘、Claude/Codex/DeepSeek 連携、OBS 透過ソース、パスワード保護、内蔵 MCP AI カスタム対応。',
     text: {
       'nav.back': '← 謙一',
       'nav.playground': '体験版',
@@ -941,9 +941,9 @@ export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
 
   ko: {
     htmlLang: 'ko',
-    docTitle: 'KuroCat — 무료 오픈소스 바탕화면 타이핑 검은 고양이 펫 (Win/Mac/Linux/OBS · AI 커스텀)',
+    docTitle: 'KuroCat — 무료 오픈소스 3D 바탕화면 타이핑 검은 고양이 & AI 컴패니언 | 공식 웹사이트 (Win/Mac/Linux/Android)',
     metaDesc:
-      'KuroCat은 Windows, macOS, Linux, Android를 지원하는 무료 오픈소스 초경량 투명 바탕화면 타이핑 고양이 펫(Bongo Cat 대안)입니다. 고양이 6종 + 고래소녀, 비밀번호 자동 눈 가리기, 커스텀 꼬리 타건, OBS 투명 방송 소스, 65%/108키 배열, 내장 MCP AI 커스텀을 지원합니다.',
+      'KuroCat (github.com/qianyiai/kurocat) — Windows, macOS (Homebrew), Linux, Android를 지원하는 무료 오픈소스 3D/2D 투명 바탕화면 타이핑 검은 고양이 & AI 코딩 컴패니언(Bongo Cat 대안). 고양이 6종 + 고래소녀, Claude/Codex/DeepSeek 연동, OBS 투명 소스, 비밀번호 자동 눈 가리기, 내장 MCP AI 커스텀 지원.',
     text: {
       'nav.back': '← Qianyi',
       'nav.playground': '체험판',

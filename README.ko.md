@@ -14,6 +14,8 @@
   <img src="https://img.shields.io/badge/Platform-Win11%2F10%2F7%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-818cf8?style=flat-square" alt="Cross Platform" />
 </p>
 
+> 🔒 **공식 배포 채널 안내**: [GitHub 저장소](https://github.com/qianyiai/kurocat) · [공식 웹사이트 (qianyi.one/kurocat)](https://qianyi.one/kurocat/?lang=ko) · [공식 Homebrew Tap](https://github.com/qianyiai/homebrew-tap) *(외부 미러 도메인은 비공식이므로 반드시 공식 채널에서 다운로드하세요.)*
+
 > 🌐 **공식 웹사이트 · 브라우저 실시간 체험판 · 고속 다운로드**: [**https://qianyi.one/kurocat/**](https://qianyi.one/kurocat/) ([한국어 UI](https://qianyi.one/kurocat/?lang=ko))
 
 **Windows(Win11/10 & Win7 SP1) · macOS(10.15+ Apple Silicon & Intel) · Linux(Ubuntu / Debian / KylinOS / UOS) · Android**를 지원하는 초경량 투명 최상단 바탕화면 타이핑·마우스 펫입니다. **Tauri v2(Rust 네이티브 전역 입력 훅 + 내장 MCP 서버 + Three.js 3D / HTML5 Canvas 2D 듀얼 엔진)** 기반으로 제작되어 외부 런타임 의존성 없이 약 24 MB 메모리로 가볍게 동작합니다. 기본 **✨ 3D 피규어 모드**와 **🎨 2D 클래식 드로잉**을 원클릭으로 전환할 수 있으며, **손그림 고양이 스킨 6종 + 🐳 고래소녀(BigFish)**(검은 고양이, 랙돌, 치즈 태비, 삼색이, 턱시도, 샴 고양이, 고래소녀), **선택형 3D 목걸이 방울 및 게임 자동 착용 게이밍 헤드셋(기본 꺼짐)**, **비밀번호 입력 시 자동 눈 가리기**, **4가지 커스텀 꼬리 타건 모드**, **OBS 네이티브 투명 브라우저 소스**, 그리고 반려묘 사진 한 장으로 AI가 0.4초 만에 나만의 펫을 만들어 주는 **내장 MCP 서버**를 모두 지원합니다.
