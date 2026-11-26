@@ -229,7 +229,7 @@ export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
       'hero.sub':
         '免费开源的透明置顶桌面键鼠伴侣，支持 <strong>3D 手办 / 2D 经典</strong> 一键切换，超低占用不卡游戏。内置 <strong>6 款猫咪 + 大肥鱼</strong>，支持摸头呼噜、输密码自动闭眼、OBS 直播与 <strong>AI 捏猫</strong>。',
       'dl.sub':
-        '所有安装包均内置 <strong>20%–150% 无级缩放</strong>、<strong>65% / 108 键随时切换</strong>、<strong>自定义尾巴拍键</strong> 与 <strong>App 内自动更新</strong>。<br />默认提供 <code>qianyi.one</code> 国内高速直链，同时保留 GitHub Releases 官方原链与 SHA-256 校验。',
+        '所有安装包均内置 <strong>20%–150% 无级缩放</strong>、<strong>65% / 108 键随时切换</strong>、<strong>自定义尾巴拍键</strong> 与 <strong>App 内自动更新</strong>。<br />默认提供 <code>kurocat.org</code> 国内高速直链，同时保留 GitHub Releases 官方原链与 SHA-256 校验。',
       'dl.winDesc':
         '开箱即 65% 紧凑机械键盘，自动创建桌面 <code>KuroCat</code> 图标、开始菜单与系统卸载入口；右键随时可一键切换 <strong>108 键全尺寸小键盘</strong>、<strong>自定义尾巴按键</strong> 与内置自更新。',
       'dl.macDesc':
@@ -260,7 +260,7 @@ export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
       'mcp.headline': '发张自家猫的照片<br />让 AI 0.4 秒捏进你的桌面',
       'mcp.body':
         'KuroCat 原生内置 <strong>Stdio</strong> 与 <strong>本机 Streamable HTTP（<code>127.0.0.1:27420</code>）</strong> 双模式 MCP 服务端，无需安装 Node.js 或 Python。右键猫咪点「复制 MCP 配置」粘贴进 <strong>Claude Desktop / Cursor / Antigravity / Windsurf</strong>，即可用自然语言捏出任何毛色、虎斑、三花、胎记斑块与主题高亮，实时热更新无需重启。',
-      'footer.credit': 'KuroCat · MIT Open Source · Built by <a class="footer-home" href="/">谦一 (Qianyi)</a>',
+      'footer.credit': 'KuroCat · MIT Open Source · Built by <a class="footer-home" href="https://qianyi.one/">谦一 (Qianyi)</a>',
     },
     placeholders: {
       'pg.pwdPlaceholder': '点此输入密码：猫咪自动闭眼 / 大肥鱼捂眼且隐藏按键…',
@@ -514,7 +514,7 @@ export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
       'hero.sub':
         'A free, open-source transparent desktop typing companion with instant <strong>3D / 2D</strong> switching and ultra-low GPU overhead. Includes <strong>6 cats + BigFish</strong>, head-pat purring, password privacy guard, OBS overlay, and <strong>AI cat studio</strong>.',
       'dl.sub':
-        'Every build includes <strong>20%–150% smooth scaling</strong>, <strong>65% / 108-key switching</strong>, <strong>customizable tail keys</strong>, and <strong>in-app auto-updates</strong>.<br />Fast CDN mirrors on <code>qianyi.one</code> alongside official GitHub Releases with SHA-256 verification.',
+        'Every build includes <strong>20%–150% smooth scaling</strong>, <strong>65% / 108-key switching</strong>, <strong>customizable tail keys</strong>, and <strong>in-app auto-updates</strong>.<br />Fast CDN mirrors on <code>kurocat.org</code> alongside official GitHub Releases with SHA-256 verification.',
       'dl.winDesc':
         'Starts with the 65% compact layout and adds Desktop, Start Menu & Uninstaller shortcuts. Right-click anytime for <strong>108-key full-size</strong>, <strong>custom tail keys</strong>, OBS source & one-click updates.',
       'dl.macDesc':
@@ -545,7 +545,7 @@ export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
       'mcp.headline': 'Share a Photo of Your Cat<br />AI Sculpts It in 0.4 Seconds',
       'mcp.body':
         'KuroCat ships with both <strong>Stdio</strong> and <strong>Local Streamable HTTP (<code>127.0.0.1:27420</code>)</strong> MCP servers inside the single binary—no Node.js or Python needed. Click "Copy MCP Config" and paste into <strong>Claude Desktop / Cursor / Antigravity / Windsurf</strong> to design any coat, tabby stripes, calico patches, or eye colors with instant hot-reload.',
-      'footer.credit': 'KuroCat · MIT Open Source · Built by <a class="footer-home" href="/?lang=en">Qianyi</a>',
+      'footer.credit': 'KuroCat · MIT Open Source · Built by <a class="footer-home" href="https://qianyi.one/?lang=en">Qianyi</a>',
     },
     placeholders: {
       'pg.pwdPlaceholder': 'Type a password here: cat closes eyes / BigFish covers eyes & hides keys…',
@@ -799,7 +799,7 @@ export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
       'hero.sub':
         '無料・オープンソースの透過デスクトップ相棒。<strong>3D / 2D</strong> をワンクリックで切替でき、ゲーム中も超低負荷で動作します。<strong>猫 6 種 + クジラ娘</strong>、なでなでゴロゴロ、パスワード自動保護、OBS 透過配信、<strong>AI カスタム猫</strong> に対応。',
       'dl.sub':
-        '全パッケージに <strong>20%–150% 無段階ズーム</strong>・<strong>65% / 108 キー切替</strong>・<strong>しっぽキー選択</strong>・<strong>アプリ内自動更新</strong> を内蔵。<br /><code>qianyi.one</code> 高速ミラーと GitHub Releases 公式リンク（SHA-256 検証対応）を用意しています。',
+        '全パッケージに <strong>20%–150% 無段階ズーム</strong>・<strong>65% / 108 キー切替</strong>・<strong>しっぽキー選択</strong>・<strong>アプリ内自動更新</strong> を内蔵。<br /><code>kurocat.org</code> 高速ミラーと GitHub Releases 公式リンク（SHA-256 検証対応）を用意しています。',
       'dl.winDesc':
         '初期配列は 65% コンパクト。デスクトップアイコンやアンインストーラーを自動作成し、右クリックから <strong>108 フルサイズ</strong>・<strong>しっぽキー指定</strong>・OBS 透過ソース・自動更新へいつでも切替できます。',
       'dl.macDesc':
@@ -830,7 +830,7 @@ export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
       'mcp.headline': '愛猫の写真から<br />AI が 0.4 秒でデスクトップへ再現',
       'mcp.body':
         'Node.js も Python も不要。単体アプリに <strong>Stdio</strong> と <strong>ローカル Streamable HTTP（<code>127.0.0.1:27420</code>）</strong> MCP サーバーを内蔵しています。右クリック「MCP 設定をコピー」を <strong>Claude Desktop / Cursor / Antigravity / Windsurf</strong> に貼るだけで、毛色や柄・瞳の色を自然言語で自由作成できます。',
-      'footer.credit': 'KuroCat · MIT Open Source · Built by <a class="footer-home" href="/?lang=ja">謙一 (Qianyi)</a>',
+      'footer.credit': 'KuroCat · MIT Open Source · Built by <a class="footer-home" href="https://qianyi.one/?lang=ja">謙一 (Qianyi)</a>',
     },
     placeholders: {
       'pg.pwdPlaceholder': 'ここにパスワードを入力：猫は目閉じ / クジラ娘は両手で目隠し…',
@@ -1084,7 +1084,7 @@ export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
       'hero.sub':
         '무료 오픈소스 투명 바탕화면 키보드·마우스 펫. <strong>3D 피규어 / 2D 클래식</strong> 원클릭 전환과 초저사양 GPU 최적화로 게임 중에도 가볍게 동작합니다. <strong>고양이 6종 + 고래소녀</strong>, 쓰다듬기 골골송, 비밀번호 눈 가리기, OBS 투명 방송, <strong>AI 펫 커스텀</strong>을 지원합니다.',
       'dl.sub':
-        '모든 패키지에 <strong>20%–150% 자유 크기 조절</strong>, <strong>65% / 108키 즉시 전환</strong>, <strong>커스텀 꼬리 타건</strong>, <strong>앱 내 자동 업데이트</strong>가 기본 포함됩니다.<br /><code>qianyi.one</code> 고속 CDN 미러와 SHA-256 검증을 지원하는 GitHub Releases 공식 링크를 함께 제공합니다.',
+        '모든 패키지에 <strong>20%–150% 자유 크기 조절</strong>, <strong>65% / 108키 즉시 전환</strong>, <strong>커스텀 꼬리 타건</strong>, <strong>앱 내 자동 업데이트</strong>가 기본 포함됩니다.<br /><code>kurocat.org</code> 고속 CDN 미러와 SHA-256 검증을 지원하는 GitHub Releases 공식 링크를 함께 제공합니다.',
       'dl.winDesc':
         '기본 65% 콤팩트 배열로 시작하며 바탕화면·시작 메뉴·제거 항목을 자동 생성합니다. 우클릭 메뉴에서 <strong>108 풀배열</strong>, <strong>커스텀 꼬리 키</strong>, OBS 투명 소스, 원클릭 업데이트를 언제든 사용할 수 있습니다.',
       'dl.macDesc':
@@ -1115,7 +1115,7 @@ export const KUROCAT_I18N: Record<Locale, KuroCatI18nBundle> = {
       'mcp.headline': '반려묘 사진 한 장이면<br />AI가 0.4초 만에 바탕화면에 제작',
       'mcp.body':
         'Node.js나 Python 설치가 필요 없습니다. 단일 실행 파일에 <strong>Stdio</strong>와 <strong>로컬 Streamable HTTP(<code>127.0.0.1:27420</code>)</strong> MCP 서버를 모두 내장했습니다. 우클릭「MCP 설정 복사」를 <strong>Claude Desktop / Cursor / Antigravity / Windsurf</strong>에 붙여넣고 원하는 털색, 줄무늬, 삼색 얼룩, 눈동자 색을 말로 주문하세요.',
-      'footer.credit': 'KuroCat · MIT Open Source · Built by <a class="footer-home" href="/?lang=ko">Qianyi</a>',
+      'footer.credit': 'KuroCat · MIT Open Source · Built by <a class="footer-home" href="https://qianyi.one/?lang=ko">Qianyi</a>',
     },
     placeholders: {
       'pg.pwdPlaceholder': '비밀번호 입력: 고양이는 눈 감기 / 고래소녀는 눈 가리기…',
