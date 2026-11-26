@@ -18,13 +18,10 @@ struct TrayCheckHandles {
     key_bubbles: CheckMenuItem<Wry>,
     privacy_guard: CheckMenuItem<Wry>,
     sound_toggle: CheckMenuItem<Wry>,
-    typing_sound_toggle: CheckMenuItem<Wry>,
     always_on_top: CheckMenuItem<Wry>,
     autostart: CheckMenuItem<Wry>,
     obs_toggle: CheckMenuItem<Wry>,
     obs_hide_pet: CheckMenuItem<Wry>,
-    live_capture_toggle: CheckMenuItem<Wry>,
-    live_hide_pet: CheckMenuItem<Wry>,
     mcp_toggle: CheckMenuItem<Wry>,
     scale_25: CheckMenuItem<Wry>,
     scale_50: CheckMenuItem<Wry>,
@@ -64,15 +61,10 @@ pub fn sync_checkmarks(s: &AppSettings) {
             let _ = h.key_bubbles.set_checked(s.show_key_bubbles);
             let _ = h.privacy_guard.set_checked(s.privacy_password_guard);
             let _ = h.sound_toggle.set_checked(s.sound_enabled);
-            let _ = h.typing_sound_toggle.set_checked(s.typing_sound_enabled);
             let _ = h.always_on_top.set_checked(s.always_on_top);
             let _ = h.autostart.set_checked(s.autostart);
             let _ = h.obs_toggle.set_checked(s.obs_enabled);
             let _ = h.obs_hide_pet.set_checked(s.obs_enabled && s.obs_hide_pet);
-            let _ = h.live_capture_toggle.set_checked(s.live_capture_enabled);
-            let _ = h
-                .live_hide_pet
-                .set_checked(s.live_capture_enabled && s.live_hide_pet);
             let _ = h.mcp_toggle.set_checked(s.mcp_enabled);
             let _ = h.scale_25.set_checked((s.scale - 0.25).abs() < 0.015);
             let _ = h.scale_50.set_checked((s.scale - 0.50).abs() < 0.015);
@@ -156,14 +148,6 @@ fn build_tray_menu(
         initial.sound_enabled,
         None::<&str>,
     )?;
-    let typing_sound_toggle = CheckMenuItem::with_id(
-        app,
-        "typing_sound_toggle",
-        t(lang, "tray.typing_sound_toggle"),
-        true,
-        initial.typing_sound_enabled,
-        None::<&str>,
-    )?;
     let always_on_top = CheckMenuItem::with_id(
         app,
         "always_on_top",
@@ -213,35 +197,11 @@ fn build_tray_menu(
         true,
         None::<&str>,
     )?;
-    let obs_sep = PredefinedMenuItem::separator(app)?;
-    let live_capture_toggle = CheckMenuItem::with_id(
-        app,
-        "live_capture_toggle",
-        t(lang, "tray.live_capture_toggle"),
-        true,
-        initial.live_capture_enabled,
-        None::<&str>,
-    )?;
-    let live_hide_pet = CheckMenuItem::with_id(
-        app,
-        "live_hide_pet",
-        t(lang, "tray.live_hide_pet"),
-        true,
-        initial.live_capture_enabled && initial.live_hide_pet,
-        None::<&str>,
-    )?;
     let obs_menu = Submenu::with_items(
         app,
         t(lang, "tray.obs_menu"),
         true,
-        &[
-            &obs_toggle,
-            &obs_hide_pet,
-            &obs_open_browser,
-            &obs_sep,
-            &live_capture_toggle,
-            &live_hide_pet,
-        ],
+        &[&obs_toggle, &obs_hide_pet, &obs_open_browser],
     )?;
 
     let breed_black = MenuItem::with_id(app, "breed_black", t(lang, "breeds.black"), true, None::<&str>)?;
@@ -406,61 +366,6 @@ fn build_tray_menu(
     )?;
     let quit = MenuItem::with_id(app, "quit", t(lang, "tray.quit"), true, None::<&str>)?;
 
-    let interact_menu = Submenu::with_items(
-        app,
-        t(lang, "tray.interact_menu"),
-        true,
-        &[&privacy_guard, &key_bubbles, &sound_toggle, &typing_sound_toggle, &always_on_top],
-    )?;
-
-    let sys_sep = PredefinedMenuItem::separator(app)?;
-    #[cfg(windows)]
-    let system_menu = Submenu::with_items(
-        app,
-        t(lang, "tray.system_menu"),
-        true,
-        &[
-            &fps_menu,
-            &lang_menu,
-            &display_menu,
-            &sys_sep,
-            &autostart,
-            &mcp_toggle,
-            &desktop_shortcut,
-            &reset_pos,
-        ],
-    )?;
-    #[cfg(target_os = "macos")]
-    let system_menu = Submenu::with_items(
-        app,
-        t(lang, "tray.system_menu"),
-        true,
-        &[
-            &fps_menu,
-            &lang_menu,
-            &display_menu,
-            &mac_input_menu,
-            &sys_sep,
-            &autostart,
-            &mcp_toggle,
-            &reset_pos,
-        ],
-    )?;
-    #[cfg(all(not(windows), not(target_os = "macos")))]
-    let system_menu = Submenu::with_items(
-        app,
-        t(lang, "tray.system_menu"),
-        true,
-        &[
-            &fps_menu,
-            &lang_menu,
-            &sys_sep,
-            &autostart,
-            &mcp_toggle,
-            &reset_pos,
-        ],
-    )?;
-
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
 
@@ -473,15 +378,24 @@ fn build_tray_menu(
             &restart_as_admin,
             &sep1,
             &click_through,
+            &privacy_guard,
+            &key_bubbles,
+            &sound_toggle,
+            &always_on_top,
             &breed_menu,
-            &scale_menu,
             &kb_menu,
             &tail_menu,
-            &interact_menu,
+            &scale_menu,
+            &fps_menu,
+            &lang_menu,
+            &desktop_shortcut,
+            &display_menu,
+            &reset_pos,
+            &autostart,
             &obs_menu,
-            &system_menu,
-            &sep2,
+            &mcp_toggle,
             &check_update,
+            &sep2,
             &quit,
         ],
     )?;
@@ -494,15 +408,24 @@ fn build_tray_menu(
             &pause_guard,
             &sep1,
             &click_through,
+            &privacy_guard,
+            &key_bubbles,
+            &sound_toggle,
+            &always_on_top,
             &breed_menu,
-            &scale_menu,
             &kb_menu,
             &tail_menu,
-            &interact_menu,
+            &scale_menu,
+            &fps_menu,
+            &lang_menu,
+            &mac_input_menu,
+            &display_menu,
+            &reset_pos,
+            &autostart,
             &obs_menu,
-            &system_menu,
-            &sep2,
+            &mcp_toggle,
             &check_update,
+            &sep2,
             &quit,
         ],
     )?;
@@ -515,15 +438,22 @@ fn build_tray_menu(
             &pause_guard,
             &sep1,
             &click_through,
+            &privacy_guard,
+            &key_bubbles,
+            &sound_toggle,
+            &always_on_top,
             &breed_menu,
-            &scale_menu,
             &kb_menu,
             &tail_menu,
-            &interact_menu,
+            &scale_menu,
+            &fps_menu,
+            &lang_menu,
+            &reset_pos,
+            &autostart,
             &obs_menu,
-            &system_menu,
-            &sep2,
+            &mcp_toggle,
             &check_update,
+            &sep2,
             &quit,
         ],
     )?;
@@ -534,13 +464,10 @@ fn build_tray_menu(
         key_bubbles,
         privacy_guard,
         sound_toggle,
-        typing_sound_toggle,
         always_on_top,
         autostart,
         obs_toggle,
         obs_hide_pet,
-        live_capture_toggle,
-        live_hide_pet,
         mcp_toggle,
         scale_25,
         scale_50,
@@ -648,18 +575,8 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
                     let _ = tray.set_tooltip(Some(default_tray_tooltip(&lang)));
                     set_pet_visible(app, true);
                 } else {
-                    let next_vis = !is_pet_visible(app);
-                    if next_vis {
-                        let mut s = state.settings.lock().unwrap();
-                        if s.obs_hide_pet || s.live_hide_pet {
-                            s.obs_hide_pet = false;
-                            s.live_hide_pet = false;
-                            crate::config::save_settings(&s);
-                            sync_checkmarks(&s);
-                            let _ = app.emit("kuro-settings", s.clone());
-                        }
-                    }
-                    set_pet_visible(app, next_vis);
+                    let vis = is_pet_visible(app);
+                    set_pet_visible(app, !vis);
                 }
             }
         })
@@ -686,9 +603,8 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
                         let next_vis = !is_pet_visible(app);
                         if next_vis {
                             let mut s = state.settings.lock().unwrap();
-                            if s.obs_hide_pet || s.live_hide_pet {
+                            if s.obs_hide_pet {
                                 s.obs_hide_pet = false;
-                                s.live_hide_pet = false;
                                 crate::config::save_settings(&s);
                                 sync_checkmarks(&s);
                                 let _ = app.emit("kuro-settings", s.clone());
@@ -767,16 +683,6 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
                     sync_checkmarks(&updated);
                     let _ = app.emit("kuro-settings", updated);
                 }
-                "typing_sound_toggle" => {
-                    let updated = {
-                        let mut s = state.settings.lock().unwrap();
-                        s.typing_sound_enabled = !s.typing_sound_enabled;
-                        crate::config::save_settings(&s);
-                        s.clone()
-                    };
-                    sync_checkmarks(&updated);
-                    let _ = app.emit("kuro-settings", updated);
-                }
                 "always_on_top" => {
                     let (on_top, updated) = {
                         let mut s = state.settings.lock().unwrap();
@@ -816,16 +722,13 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
                     };
                     crate::obs::sync_obs_server(app, enabled, port);
                     sync_checkmarks(&updated);
-                    if !enabled
-                        && !crate::should_hide_desktop_pet(&updated)
-                        && !state.paused_guard.load(std::sync::atomic::Ordering::Relaxed)
-                    {
+                    if !enabled && !state.paused_guard.load(std::sync::atomic::Ordering::Relaxed) {
                         set_pet_visible(app, true);
                     }
                     let _ = app.emit("kuro-settings", updated);
                 }
                 "obs_hide_pet" => {
-                    let (port, updated) = {
+                    let (hide_now, port, updated) = {
                         let mut s = state.settings.lock().unwrap();
                         let next_hide = !(s.obs_enabled && s.obs_hide_pet);
                         if next_hide && !s.obs_enabled {
@@ -836,12 +739,12 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
                         }
                         s.obs_hide_pet = next_hide;
                         crate::config::save_settings(&s);
-                        (s.obs_port, s.clone())
+                        (next_hide, s.obs_port, s.clone())
                     };
                     crate::obs::sync_obs_server(app, updated.obs_enabled, port);
                     sync_checkmarks(&updated);
                     if !state.paused_guard.load(std::sync::atomic::Ordering::Relaxed) {
-                        set_pet_visible(app, !crate::should_hide_desktop_pet(&updated));
+                        set_pet_visible(app, !hide_now);
                     }
                     let _ = app.emit("kuro-settings", updated);
                 }
@@ -864,59 +767,6 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
                         let _ = app.emit("kuro-settings", updated);
                     }
                     crate::updater::open_url_in_browser(&crate::obs::obs_url(port));
-                }
-                "live_capture_toggle" => {
-                    let (prev_hide, updated) = {
-                        let mut s = state.settings.lock().unwrap();
-                        let prev_hide = crate::should_hide_desktop_pet(&s);
-                        s.live_capture_enabled = !s.live_capture_enabled;
-                        if !s.live_capture_enabled {
-                            s.live_hide_pet = false;
-                        }
-                        crate::config::save_settings(&s);
-                        (prev_hide, s.clone())
-                    };
-                    crate::sync_live_capture_window(
-                        app,
-                        updated.live_capture_enabled,
-                        &updated.keyboard_layout,
-                    );
-                    sync_checkmarks(&updated);
-                    let next_hide = crate::should_hide_desktop_pet(&updated);
-                    if next_hide != prev_hide
-                        && !state.paused_guard.load(std::sync::atomic::Ordering::Relaxed)
-                    {
-                        set_pet_visible(app, !next_hide);
-                    }
-                    let _ = app.emit("kuro-settings", updated);
-                }
-                "live_hide_pet" => {
-                    let (was_enabled, updated) = {
-                        let mut s = state.settings.lock().unwrap();
-                        let was_enabled = s.live_capture_enabled;
-                        let next_hide = !(s.live_capture_enabled && s.live_hide_pet);
-                        if next_hide && !s.live_capture_enabled {
-                            s.live_capture_enabled = true;
-                        }
-                        s.live_hide_pet = next_hide;
-                        crate::config::save_settings(&s);
-                        (was_enabled, s.clone())
-                    };
-                    if updated.live_capture_enabled != was_enabled
-                        || (updated.live_capture_enabled
-                            && app.get_webview_window("live").is_none())
-                    {
-                        crate::sync_live_capture_window(
-                            app,
-                            updated.live_capture_enabled,
-                            &updated.keyboard_layout,
-                        );
-                    }
-                    sync_checkmarks(&updated);
-                    if !state.paused_guard.load(std::sync::atomic::Ordering::Relaxed) {
-                        set_pet_visible(app, !crate::should_hide_desktop_pet(&updated));
-                    }
-                    let _ = app.emit("kuro-settings", updated);
                 }
                 "mcp_toggle" => {
                     let updated = {

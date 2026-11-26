@@ -2988,22 +2988,254 @@ pub(crate) fn release_single_instance_lock() {
     }
 }
 
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct LinuxWebkitEnvPlan {
+    force_shm: bool,
+    disable_dmabuf: bool,
+    disable_nv_explicit_sync: bool,
+    prefer_x11: bool,
+}
+
+/// Decides Linux WebKitGTK & GDK environment defaults before GTK/WebKit initializes.
+///
+/// Historically setting `WEBKIT_DISABLE_DMABUF_RENDERER=1` unconditionally prevented crashes
+/// on NVIDIA/VMs/KylinOS, but on WebKitGTK 2.44+ (including Ubuntu 22.04 LTS security updates
+/// 2.46–2.54) it forces transparent overlay windows onto the legacy non-DMABUF backing store,
+/// causing persistent animation ghosting/trails (Issue #56, tauri#14924) and blanking/crashes
+/// on 2.54+. Instead:
+/// - Explicit user/packager env overrides always win.
+/// - Healthy Mesa hardware GPUs (Intel/AMD/etc.) keep native DMA-BUF compositing (clean RGBA swap).
+/// - NVIDIA / VMs / KylinOS / software GL use `WEBKIT_DMABUF_RENDERER_FORCE_SHM=1` on WebKitGTK
+///   >= 2.44 (preserving the modern full-frame swap chain while bypassing hardware DMA-BUF/GBM
+///   imports), falling back to `WEBKIT_DISABLE_DMABUF_RENDERER=1` only on WebKitGTK < 2.44.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+#[allow(clippy::too_many_arguments)]
+fn select_linux_webkit_env(
+    webkit_ver: Option<(u32, u32, u32)>,
+    has_explicit_webkit_override: bool,
+    has_nv_explicit_sync_override: bool,
+    nvidia_driver: bool,
+    kylin_or_software_gl: bool,
+    has_wayland_display: bool,
+    has_x11_display: bool,
+    has_gdk_backend_override: bool,
+    has_kurocat_wayland_override: bool,
+) -> LinuxWebkitEnvPlan {
+    let needs_shm_fallback = nvidia_driver || kylin_or_software_gl;
+    let supports_force_shm = webkit_ver.map_or(true, |(maj, min, _)| (maj, min) >= (2, 44));
+
+    let (force_shm, disable_dmabuf) = if has_explicit_webkit_override || !needs_shm_fallback {
+        (false, false)
+    } else if supports_force_shm {
+        (true, false)
+    } else {
+        (false, true)
+    };
+
+    let disable_nv_explicit_sync = nvidia_driver && !has_nv_explicit_sync_override;
+    let prefer_x11 = has_wayland_display
+        && has_x11_display
+        && !has_gdk_backend_override
+        && !has_kurocat_wayland_override;
+
+    LinuxWebkitEnvPlan {
+        force_shm,
+        disable_dmabuf,
+        disable_nv_explicit_sync,
+        prefer_x11,
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn probe_linux_webkitgtk_version() -> Option<(u32, u32, u32)> {
+    use std::ffi::{c_char, c_int, c_void};
+
+    const RTLD_LAZY: c_int = 0x00001;
+    extern "C" {
+        fn dlopen(filename: *const c_char, flag: c_int) -> *mut c_void;
+        fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
+    }
+
+    type VersionFn = unsafe extern "C" fn() -> u32;
+
+    unsafe {
+        // First try symbols already linked into the process (RTLD_DEFAULT = NULL on glibc),
+        // then fall back to opening libwebkit2gtk-4.1.so.0 / 4.0.so.37.
+        let mut handles: [*mut c_void; 3] = [std::ptr::null_mut(); 3];
+        let mut count = 1usize; // index 0 = RTLD_DEFAULT (null)
+        for lib in [
+            b"libwebkit2gtk-4.1.so.0\0".as_slice(),
+            b"libwebkit2gtk-4.0.so.37\0".as_slice(),
+        ] {
+            let h = dlopen(lib.as_ptr() as *const c_char, RTLD_LAZY);
+            if !h.is_null() {
+                handles[count] = h;
+                count += 1;
+            }
+        }
+
+        for &h in &handles[..count] {
+            let maj_sym = dlsym(h, b"webkit_get_major_version\0".as_ptr() as *const c_char);
+            let min_sym = dlsym(h, b"webkit_get_minor_version\0".as_ptr() as *const c_char);
+            let mic_sym = dlsym(h, b"webkit_get_micro_version\0".as_ptr() as *const c_char);
+            if !maj_sym.is_null() && !min_sym.is_null() && !mic_sym.is_null() {
+                let maj: VersionFn = std::mem::transmute(maj_sym);
+                let min: VersionFn = std::mem::transmute(min_sym);
+                let mic: VersionFn = std::mem::transmute(mic_sym);
+                let v = (maj(), min(), mic());
+                if v.0 > 0 {
+                    return Some(v);
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn probe_linux_nvidia_driver() -> bool {
+    use std::path::Path;
+    if Path::new("/proc/driver/nvidia/version").exists()
+        || Path::new("/sys/module/nvidia").exists()
+        || Path::new("/sys/module/nvidia_drm").exists()
+    {
+        return true;
+    }
+    let Ok(entries) = std::fs::read_dir("/sys/class/drm") else {
+        return false;
+    };
+    entries.flatten().any(|entry| {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if !name.starts_with("card") || name.contains('-') {
+            return false;
+        }
+        let device = entry.path().join("device");
+        let vendor = std::fs::read_to_string(device.join("vendor")).unwrap_or_default();
+        let driver = std::fs::read_link(device.join("driver")).ok();
+        vendor.trim().eq_ignore_ascii_case("0x10de")
+            && driver
+                .as_deref()
+                .and_then(Path::file_name)
+                .is_some_and(|d| d == "nvidia")
+    })
+}
+
+#[cfg(target_os = "linux")]
+fn probe_linux_kylin_or_software_gl() -> bool {
+    use std::path::Path;
+    if Path::new("/etc/kylin-release").exists() {
+        return true;
+    }
+    if std::env::var("LIBGL_ALWAYS_SOFTWARE")
+        .map(|v| !v.is_empty() && v != "0")
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    const HW_MESA_DRIVERS: &[&str] = &[
+        "amdgpu", "asahi", "etnaviv", "i915", "lima", "msm", "nouveau", "panfrost", "panthor",
+        "radeon", "v3d", "xe",
+    ];
+    let has_hw_mesa = std::fs::read_dir("/sys/class/drm")
+        .ok()
+        .map(|entries| {
+            entries.flatten().any(|entry| {
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if !name.starts_with("card") || name.contains('-') {
+                    return false;
+                }
+                std::fs::read_link(entry.path().join("device/driver"))
+                    .ok()
+                    .and_then(|p| p.file_name().map(|s| s.to_string_lossy().into_owned()))
+                    .is_some_and(|drv| HW_MESA_DRIVERS.iter().any(|&hw| hw == drv))
+            })
+        })
+        .unwrap_or(false);
+
+    if has_hw_mesa {
+        return false;
+    }
+
+    // No hardware Mesa GPU detected: check common VM DMI markers (VMware/VirtualBox/QEMU/KVM/etc.)
+    for dmi_path in [
+        "/sys/class/dmi/id/product_name",
+        "/sys/class/dmi/id/sys_vendor",
+    ] {
+        if let Ok(text) = std::fs::read_to_string(dmi_path) {
+            let lower = text.to_ascii_lowercase();
+            if ["vmware", "virtualbox", "qemu", "kvm", "parallels", "bochs", "hyper-v"]
+                .iter()
+                .any(|vm| lower.contains(vm))
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 #[cfg(target_os = "linux")]
 fn linux_configure_display_env() {
-    // Prevent WebKitGTK 4.1 DMABUF blank/black transparent window issues on KylinOS/Mesa/NVIDIA/VMs
-    // while keeping RGBA compositing transparency intact.
-    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+    let webkit_ver = probe_linux_webkitgtk_version();
+    let has_explicit_webkit_override = [
+        "WEBKIT_DISABLE_DMABUF_RENDERER",
+        "WEBKIT_DMABUF_RENDERER_FORCE_SHM",
+        "WEBKIT_FORCE_DMABUF_RENDERER",
+        "WEBKIT_DISABLE_COMPOSITING_MODE",
+    ]
+    .iter()
+    .any(|k| std::env::var_os(k).is_some());
+
+    let has_nv_explicit_sync_override = std::env::var_os("__NV_DISABLE_EXPLICIT_SYNC").is_some();
+    let nvidia_driver = probe_linux_nvidia_driver();
+    let kylin_or_software_gl = probe_linux_kylin_or_software_gl();
+    let has_wayland_display = std::env::var_os("WAYLAND_DISPLAY").is_some();
+    let has_x11_display = std::env::var("DISPLAY")
+        .map(|v| !v.is_empty())
+        .unwrap_or(false);
+    let has_gdk_backend_override = std::env::var_os("GDK_BACKEND").is_some();
+    let has_kurocat_wayland_override = std::env::var_os("KUROCAT_WAYLAND").is_some();
+
+    let plan = select_linux_webkit_env(
+        webkit_ver,
+        has_explicit_webkit_override,
+        has_nv_explicit_sync_override,
+        nvidia_driver,
+        kylin_or_software_gl,
+        has_wayland_display,
+        has_x11_display,
+        has_gdk_backend_override,
+        has_kurocat_wayland_override,
+    );
+
+    if plan.force_shm {
+        std::env::set_var("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1");
+    }
+    if plan.disable_dmabuf {
         std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
     }
-    // Prefer X11/XWayland when DISPLAY is available so bottom-right window placement,
-    // XShape click-through, and zero-root XRecord global input work reliably across desktop environments.
-    if std::env::var_os("WAYLAND_DISPLAY").is_some()
-        && std::env::var_os("DISPLAY").map(|v| !v.is_empty()).unwrap_or(false)
-        && std::env::var_os("GDK_BACKEND").is_none()
-        && std::env::var_os("KUROCAT_WAYLAND").is_none()
-    {
+    if plan.disable_nv_explicit_sync {
+        std::env::set_var("__NV_DISABLE_EXPLICIT_SYNC", "1");
+    }
+    if plan.prefer_x11 {
+        // Prefer X11/XWayland when DISPLAY is available so bottom-right window placement,
+        // XShape click-through, and zero-root XRecord global input work reliably across desktop environments.
         std::env::set_var("GDK_BACKEND", "x11");
     }
+
+    eprintln!(
+        "[kurocat] linux display: webkit={:?} nvidia={} kylin_or_vm={} force_shm={} disable_dmabuf={} nv_no_sync={} prefer_x11={}",
+        webkit_ver,
+        nvidia_driver,
+        kylin_or_software_gl,
+        plan.force_shm,
+        plan.disable_dmabuf,
+        plan.disable_nv_explicit_sync,
+        plan.prefer_x11
+    );
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -3548,6 +3780,75 @@ mod side_menu_layout_tests {
         // 20% mini scale (~95px tall): clamped at 55% so toast never steals the whole cat
         let lim20 = super::banner_hit_ry_limit(95.0);
         assert!((lim20 - 0.55).abs() < 1e-6);
+    }
+
+    #[test]
+    fn linux_webkit_env_avoids_stale_shm_ghosting_on_modern_webkit() {
+        // Intel/AMD Mesa on Ubuntu 22.04/24.04 (WebKitGTK 2.50.4): native DMABUF stays enabled
+        let mesa = super::select_linux_webkit_env(
+            Some((2, 50, 4)),
+            false,
+            false,
+            false,
+            false,
+            true,
+            true,
+            false,
+            false,
+        );
+        assert!(!mesa.disable_dmabuf);
+        assert!(!mesa.force_shm);
+        assert!(!mesa.disable_nv_explicit_sync);
+        assert!(mesa.prefer_x11);
+
+        // NVIDIA on WebKitGTK 2.50.4: uses WEBKIT_DMABUF_RENDERER_FORCE_SHM=1 instead of DISABLE_DMABUF
+        let nv_modern = super::select_linux_webkit_env(
+            Some((2, 50, 4)),
+            false,
+            false,
+            true,
+            false,
+            true,
+            true,
+            false,
+            false,
+        );
+        assert!(nv_modern.force_shm);
+        assert!(!nv_modern.disable_dmabuf);
+        assert!(nv_modern.disable_nv_explicit_sync);
+
+        // Legacy KylinOS WebKitGTK 2.38 (< 2.44): keeps WEBKIT_DISABLE_DMABUF_RENDERER=1
+        let kylin_legacy = super::select_linux_webkit_env(
+            Some((2, 38, 6)),
+            false,
+            false,
+            false,
+            true,
+            false,
+            true,
+            false,
+            false,
+        );
+        assert!(!kylin_legacy.force_shm);
+        assert!(kylin_legacy.disable_dmabuf);
+        assert!(!kylin_legacy.prefer_x11);
+
+        // Explicit user override always wins
+        let overridden = super::select_linux_webkit_env(
+            Some((2, 54, 1)),
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            false,
+            true,
+        );
+        assert!(!overridden.force_shm);
+        assert!(!overridden.disable_dmabuf);
+        assert!(!overridden.disable_nv_explicit_sync);
+        assert!(!overridden.prefer_x11);
     }
 
     #[test]
