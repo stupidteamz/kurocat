@@ -1291,6 +1291,16 @@ fn open_release_page(url: String) {
 }
 
 #[tauri::command]
+fn restart_as_admin(app: AppHandle) {
+    #[cfg(windows)]
+    if !win_is_elevated() {
+        win_restart_as_admin(app);
+    }
+    #[cfg(not(windows))]
+    let _ = app;
+}
+
+#[tauri::command]
 #[cfg(windows)]
 fn save_window_pos(app: AppHandle) {
     if win_needs_win7_ulw() {
@@ -3253,6 +3263,7 @@ pub fn run() {
             trim_idle_memory,
             get_cats,
             get_game_active,
+            restart_as_admin,
             get_mcp_config,
             get_agent_hooks_config,
             get_obs_url,

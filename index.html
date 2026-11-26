@@ -94,10 +94,6 @@
         <span data-i18n="menu.toggle_sound">摸头呼噜声</span>
         <span class="menu-check" id="chk-sound">✓</span>
       </button>
-      <button class="menu-item" data-action="toggle-typing-sound">
-        <span data-i18n="menu.toggle_typing_sound">打字键鼠音效</span>
-        <span class="menu-check" id="chk-typing-sound"></span>
-      </button>
       <button class="menu-item" data-action="toggle-top">
         <span data-i18n="menu.toggle_top">始终置顶显示</span>
         <span class="menu-check" id="chk-top">✓</span>
@@ -170,27 +166,6 @@
         </div>
       </div>
       <div class="menu-scale-row">
-        <div class="scale-header">
-          <span class="menu-scale-label" data-i18n="menu.opacity_label">不透明度</span>
-          <button class="scale-value-btn" id="opacity-value" type="button" data-i18n-title="menu.opacity_reset_title" title="点击复位 100%">100%</button>
-        </div>
-        <div class="scale-slider-wrap">
-          <input
-            type="range"
-            id="opacity-slider"
-            class="scale-slider"
-            min="20"
-            max="100"
-            step="1"
-            value="100"
-          />
-          <div class="scale-ticks">
-            <span>20%</span>
-            <span>100%</span>
-          </div>
-        </div>
-      </div>
-      <div class="menu-scale-row">
         <span class="menu-scale-label" data-i18n="menu.perf_lang_label">帧率上限与界面语言</span>
         <div class="kb-pills">
           <button class="kb-pill active" data-fpscap="0" data-i18n="menu.fps_auto" type="button">60 流畅</button>
@@ -206,9 +181,6 @@
         </div>
       </div>
       <div class="menu-sep"></div>
-      <button class="menu-item hidden" data-action="restart-admin" id="btn-restart-admin">
-        <span id="admin-restart-label" data-i18n="menu.admin_restart">以管理员身份重启（捕获游戏键鼠）</span>
-      </button>
       <button class="menu-item" data-action="desktop-shortcut" id="btn-desktop-shortcut">
         <span data-i18n="menu.desktop_shortcut">创建桌面图标</span>
         <span class="menu-hint" id="shortcut-hint">KuroCat</span>
@@ -218,7 +190,7 @@
       </button>
       <button class="menu-item" data-action="check-update" id="btn-check-update">
         <span id="update-btn-label">检查更新</span>
-        <span class="menu-hint" id="update-hint">v5.1.3</span>
+        <span class="menu-hint" id="update-hint">v5.1.2</span>
       </button>
       <button class="menu-item danger" data-action="quit">
         <span data-i18n="menu.quit">退出 KuroCat</span>
