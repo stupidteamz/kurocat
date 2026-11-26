@@ -42,8 +42,7 @@ pub enum InputEvent {
 #[repr(u8)]
 enum KeySource {
     Primary = 0, // Windows WH_KEYBOARD_LL or macOS CGEventTap
-    Hid = 1,     // macOS IOHIDManager (Karabiner VirtualHIDKeyboard / external BT keyboards)
-    AppKit = 2,  // macOS NSEvent global monitor (Accessibility-backed passive fallback, #63)
+    Hid = 1,     // macOS IOHIDManager (Karabiner VirtualHIDKeyboard / Secure Input resilient)
 }
 
 enum RawHookMsg {
@@ -84,34 +83,7 @@ static LAST_HOOK_MOUSE_X: AtomicI32 = AtomicI32::new(i32::MIN);
 #[cfg(windows)]
 static LAST_HOOK_MOUSE_Y: AtomicI32 = AtomicI32::new(i32::MIN);
 #[cfg(windows)]
-static WIN_HOOK_LEFT_DOWN: AtomicBool = AtomicBool::new(false);
-#[cfg(windows)]
 const WM_KURO_PAUSE_TOGGLE: u32 = 0x8007; // WM_APP + 7
-
-/// Queries Windows logical primary mouse button state via `GetAsyncKeyState`, properly
-/// honoring left-handed swapped mouse buttons (`SM_SWAPBUTTON`).
-#[cfg(windows)]
-pub fn win_async_primary_button_down() -> bool {
-    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-        GetAsyncKeyState, VK_LBUTTON, VK_RBUTTON,
-    };
-    use windows_sys::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_SWAPBUTTON};
-    unsafe {
-        let primary_vk = if GetSystemMetrics(SM_SWAPBUTTON) != 0 {
-            VK_RBUTTON as i32
-        } else {
-            VK_LBUTTON as i32
-        };
-        (GetAsyncKeyState(primary_vk) as u16 & 0x8000) != 0
-    }
-}
-
-/// Returns the latest logical left-button state observed by `WH_MOUSE_LL` (already post-swap,
-/// and also catches precision touchpad tap-drag / virtual mouse drivers).
-#[cfg(windows)]
-pub fn win_hook_left_button_down() -> bool {
-    WIN_HOOK_LEFT_DOWN.load(Ordering::Acquire)
-}
 
 fn is_alt_vk(vk: u32) -> bool {
     matches!(vk, 0x12 | 0xA4 | 0xA5)
@@ -145,8 +117,6 @@ pub fn set_hooks_paused(paused: bool) {
     HOOKS_PAUSED.store(paused, Ordering::SeqCst);
     if paused {
         ALT_HELD.store(false, Ordering::Relaxed);
-        #[cfg(windows)]
-        WIN_HOOK_LEFT_DOWN.store(false, Ordering::Release);
     }
     #[cfg(windows)]
     {
@@ -387,10 +357,8 @@ pub fn linux_evdev_to_vk(code: u16) -> Option<u32> {
 pub fn start_global_hooks(app: AppHandle) {
     let (tx, rx) = mpsc::channel::<RawHookMsg>();
     let _ = HOOK_TX.set(tx);
-    #[cfg(target_os = "macos")]
-    let app_for_mac = app.clone();
 
-    // Dispatcher thread: deduplicates held key repeats & multi-channel macOS events,
+    // Dispatcher thread: deduplicates held key repeats & dual-channel macOS events,
     // throttles mouse moves to ~60Hz, and reconciles lost KeyUp/MouseUp events (Fixes #3 & #4).
     std::thread::spawn(move || {
         let mut dedup = KeyDeduplicator::new();
@@ -467,9 +435,6 @@ pub fn start_global_hooks(app: AppHandle) {
                             unsafe { (GetAsyncKeyState(os_vk) as u16 & 0x8000) != 0 };
                         if !physically_down {
                             mouse_down[idx] = false;
-                            if idx == 0 {
-                                WIN_HOOK_LEFT_DOWN.store(false, Ordering::Release);
-                            }
                             emit_input(
                                 app,
                                 InputEvent::MouseUp {
@@ -624,7 +589,7 @@ pub fn start_global_hooks(app: AppHandle) {
     });
 
     #[cfg(target_os = "macos")]
-    macos_hook::start_input_listeners(app_for_mac);
+    macos_hook::start_input_listeners();
 
     #[cfg(target_os = "linux")]
     std::thread::spawn(|| {
@@ -758,11 +723,9 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: usize, lparam: isiz
                     }
                 }
                 WM_LBUTTONDOWN => {
-                    WIN_HOOK_LEFT_DOWN.store(true, Ordering::Release);
                     let _ = tx.send(RawHookMsg::MouseDown("left"));
                 }
                 WM_LBUTTONUP => {
-                    WIN_HOOK_LEFT_DOWN.store(false, Ordering::Release);
                     let _ = tx.send(RawHookMsg::MouseUp("left"));
                 }
                 WM_RBUTTONDOWN => {
@@ -919,47 +882,24 @@ pub(crate) fn should_auto_reset_stale_macos_tcc(
     }
 }
 
-/// Extracts `kCGSSessionSecureInputPID = <pid>` from `ioreg -l -w 0` output when another macOS
-/// app has enabled Secure Keyboard Input (which silently blocks global keyboard capture).
-#[cfg(any(target_os = "macos", test))]
-pub(crate) fn parse_macos_secure_input_pid(ioreg_output: &str) -> Option<u32> {
-    for line in ioreg_output.lines() {
-        let Some((_, rhs)) = line.split_once("kCGSSessionSecureInputPID") else {
-            continue;
-        };
-        let digits: String = rhs
-            .chars()
-            .skip_while(|c| !c.is_ascii_digit())
-            .take_while(|c| c.is_ascii_digit())
-            .collect();
-        if let Ok(pid) = digits.parse::<u32>() {
-            if pid > 0 {
-                return Some(pid);
-            }
-        }
-    }
-    None
-}
-
 #[cfg(target_os = "macos")]
 pub mod macos_hook {
     use super::{
-        hid_usage_to_vk, parse_macos_adhoc_cdhash, parse_macos_secure_input_pid,
-        should_auto_reset_stale_macos_tcc, KeySource, RawHookMsg, HOOK_TX, KEY_EVENTS_RECEIVED,
+        hid_usage_to_vk, parse_macos_adhoc_cdhash, should_auto_reset_stale_macos_tcc, KeySource,
+        RawHookMsg, HOOK_TX, KEY_EVENTS_RECEIVED,
     };
     use block2::{Block, RcBlock};
     use objc2_app_kit::{
-        NSEvent, NSEventMask, NSEventType, NSWorkspace, NSWorkspaceDidWakeNotification,
-        NSWorkspaceScreensDidWakeNotification, NSWorkspaceSessionDidBecomeActiveNotification,
+        NSWorkspace, NSWorkspaceDidWakeNotification, NSWorkspaceScreensDidWakeNotification,
+        NSWorkspaceSessionDidBecomeActiveNotification,
     };
     use objc2_foundation::NSNotification;
     use std::ffi::c_void;
     use std::ptr::NonNull;
     use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU64, Ordering};
-    use std::sync::{Once, OnceLock};
+    use std::sync::Once;
     use std::thread::{self, JoinHandle};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
-    use tauri::AppHandle;
 
     type CGEventTapProxy = *mut c_void;
     type CGEventRef = *mut c_void;
@@ -977,7 +917,6 @@ pub mod macos_hook {
     type CGDirectDisplayID = u32;
 
     type IOHIDManagerRef = *mut c_void;
-    type IOHIDDeviceRef = *mut c_void;
     type IOHIDValueRef = *mut c_void;
     type IOHIDElementRef = *mut c_void;
     type IOReturn = i32;
@@ -1024,7 +963,6 @@ pub mod macos_hook {
     const K_CG_KEYBOARD_EVENT_KEYCODE: u32 = 9;
     const K_CG_SCROLL_WHEEL_EVENT_DELTA_AXIS_1: u32 = 11;
 
-    const K_CG_HID_EVENT_TAP: u32 = 0;
     const K_CG_SESSION_EVENT_TAP: u32 = 1;
     const K_CG_HEAD_INSERT_EVENT_TAP: u32 = 0;
     const K_CG_EVENT_TAP_OPTION_DEFAULT: u32 = 0;
@@ -1062,18 +1000,6 @@ pub mod macos_hook {
         sender: *mut c_void,
         value: IOHIDValueRef,
     );
-
-    type IOHIDDeviceCallback = extern "C" fn(
-        context: *mut c_void,
-        result: IOReturn,
-        sender: *mut c_void,
-        device: IOHIDDeviceRef,
-    );
-
-    #[link(name = "Carbon", kind = "framework")]
-    extern "C" {
-        fn IsSecureEventInputEnabled() -> u8;
-    }
 
     #[link(name = "CoreGraphics", kind = "framework")]
     extern "C" {
@@ -1172,16 +1098,6 @@ pub mod macos_hook {
             callback: Option<IOHIDValueCallback>,
             context: *mut c_void,
         );
-        fn IOHIDManagerRegisterDeviceMatchingCallback(
-            manager: IOHIDManagerRef,
-            callback: Option<IOHIDDeviceCallback>,
-            context: *mut c_void,
-        );
-        fn IOHIDManagerRegisterDeviceRemovalCallback(
-            manager: IOHIDManagerRef,
-            callback: Option<IOHIDDeviceCallback>,
-            context: *mut c_void,
-        );
         fn IOHIDManagerScheduleWithRunLoop(
             manager: IOHIDManagerRef,
             run_loop: CFRunLoopRef,
@@ -1195,7 +1111,6 @@ pub mod macos_hook {
         fn IOHIDManagerOpen(manager: IOHIDManagerRef, options: IOOptionBits) -> IOReturn;
         fn IOHIDManagerClose(manager: IOHIDManagerRef, options: IOOptionBits) -> IOReturn;
         fn IOHIDValueGetElement(value: IOHIDValueRef) -> IOHIDElementRef;
-        fn IOHIDValueGetLength(value: IOHIDValueRef) -> isize;
         fn IOHIDValueGetIntegerValue(value: IOHIDValueRef) -> isize;
         fn IOHIDElementGetUsagePage(element: IOHIDElementRef) -> u32;
         fn IOHIDElementGetUsage(element: IOHIDElementRef) -> u32;
@@ -1208,112 +1123,19 @@ pub mod macos_hook {
         fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> bool;
     }
 
-    static MAC_APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
     static HOOK_RUN_LOOP: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
     static TAP_PORT: AtomicPtr<c_void> = AtomicPtr::new(std::ptr::null_mut());
     static TAP_ACTIVE: AtomicBool = AtomicBool::new(false);
     static TAP_HAS_KEYBOARD: AtomicBool = AtomicBool::new(false);
     static HID_ACTIVE: AtomicBool = AtomicBool::new(false);
-    static APPKIT_MONITOR_ACTIVE: AtomicBool = AtomicBool::new(false);
-    static TAP_KEY_EVENTS: AtomicU64 = AtomicU64::new(0);
-    static HID_KEY_EVENTS: AtomicU64 = AtomicU64::new(0);
-    static APPKIT_KEY_EVENTS: AtomicU64 = AtomicU64::new(0);
-    static HID_DEVICE_COUNT: AtomicU64 = AtomicU64::new(0);
     static SNAPSHOT_AX: AtomicBool = AtomicBool::new(false);
     static SNAPSHOT_LISTEN: AtomicBool = AtomicBool::new(false);
     static RECONNECT_REQUESTED: AtomicBool = AtomicBool::new(false);
     static HID_RECONNECT_REQUESTED: AtomicBool = AtomicBool::new(false);
     static LAST_TICK_WALL_MS: AtomicU64 = AtomicU64::new(0);
 
-    fn modifier_keycode_is_down(kc: u16, flags: u64) -> bool {
-        match kc {
-            0x38 | 0x3C => (flags & FLAG_SHIFT) != 0,
-            0x3B | 0x3E => (flags & FLAG_CONTROL) != 0,
-            0x3A | 0x3D => (flags & FLAG_OPTION) != 0,
-            0x37 | 0x36 => (flags & FLAG_COMMAND) != 0,
-            0x39 => (flags & FLAG_CAPS_LOCK) != 0,
-            _ => false,
-        }
-    }
-
-    /// Channel 3 (#63): Passive AppKit `NSEvent` global keyboard monitor backed purely by
-    /// Accessibility (`AXIsProcessTrusted`), rescuing keyboard capture on macOS 15/26 when
-    /// `ListenEvent` TCC lags behind or external Bluetooth keyboards bypass `IOHIDManager`.
-    fn ensure_appkit_keyboard_monitor() {
-        if !unsafe { AXIsProcessTrusted() } {
-            return;
-        }
-        if APPKIT_MONITOR_ACTIVE.swap(true, Ordering::AcqRel) {
-            return;
-        }
-        let Some(app) = MAC_APP_HANDLE.get() else {
-            APPKIT_MONITOR_ACTIVE.store(false, Ordering::Release);
-            return;
-        };
-        let queued = app.run_on_main_thread(|| {
-            let mask = NSEventMask::KeyDown | NSEventMask::KeyUp | NSEventMask::FlagsChanged;
-            let handler = RcBlock::new(|ev: NonNull<NSEvent>| {
-                let ev_ref = unsafe { ev.as_ref() };
-                let kc = ev_ref.keyCode();
-                let Some(vk) = macos_keycode_to_vk(kc) else {
-                    return;
-                };
-                let Some(tx) = HOOK_TX.get() else {
-                    return;
-                };
-                match ev_ref.r#type() {
-                    NSEventType::KeyDown => {
-                        APPKIT_KEY_EVENTS.fetch_add(1, Ordering::Relaxed);
-                        let _ = tx.send(RawHookMsg::KeyDown {
-                            vk,
-                            scan: kc as u32,
-                            source: KeySource::AppKit,
-                        });
-                    }
-                    NSEventType::KeyUp => {
-                        let _ = tx.send(RawHookMsg::KeyUp {
-                            vk,
-                            scan: kc as u32,
-                            source: KeySource::AppKit,
-                        });
-                    }
-                    NSEventType::FlagsChanged => {
-                        let flags = ev_ref.modifierFlags().0 as u64;
-                        if modifier_keycode_is_down(kc, flags) {
-                            APPKIT_KEY_EVENTS.fetch_add(1, Ordering::Relaxed);
-                            let _ = tx.send(RawHookMsg::KeyDown {
-                                vk,
-                                scan: kc as u32,
-                                source: KeySource::AppKit,
-                            });
-                        } else {
-                            let _ = tx.send(RawHookMsg::KeyUp {
-                                vk,
-                                scan: kc as u32,
-                                source: KeySource::AppKit,
-                            });
-                        }
-                    }
-                    _ => {}
-                }
-            });
-            if let Some(monitor) =
-                NSEvent::addGlobalMonitorForEventsMatchingMask_handler(mask, &handler)
-            {
-                std::mem::forget(monitor);
-            } else {
-                APPKIT_MONITOR_ACTIVE.store(false, Ordering::Release);
-            }
-        });
-        if queued.is_err() {
-            APPKIT_MONITOR_ACTIVE.store(false, Ordering::Release);
-        }
-    }
-
-    pub(super) fn start_input_listeners(app: AppHandle) {
-        let _ = MAC_APP_HANDLE.set(app);
+    pub(super) fn start_input_listeners() {
         install_wake_observers();
-        ensure_appkit_keyboard_monitor();
         spawn_input_workers(run_event_tap_loop, run_hid_loop);
     }
 
@@ -1374,12 +1196,6 @@ pub mod macos_hook {
         pub tap_active: bool,
         pub tap_has_keyboard: bool,
         pub hid_active: bool,
-        pub hid_device_count: u64,
-        pub appkit_active: bool,
-        pub secure_input_enabled: bool,
-        pub tap_key_events: u64,
-        pub hid_key_events: u64,
-        pub appkit_key_events: u64,
         pub key_events_received: u64,
     }
 
@@ -1390,24 +1206,6 @@ pub mod macos_hook {
             .unwrap_or(0)
     }
 
-    fn detect_secure_input_owner() -> Option<String> {
-        let out = std::process::Command::new("/usr/sbin/ioreg")
-            .args(["-l", "-w", "0"])
-            .output()
-            .ok()?;
-        let pid = parse_macos_secure_input_pid(&String::from_utf8_lossy(&out.stdout))?;
-        let proc_name = std::process::Command::new("/bin/ps")
-            .args(["-p", &pid.to_string(), "-o", "comm="])
-            .output()
-            .ok()
-            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-            .filter(|s| !s.is_empty());
-        Some(match proc_name {
-            Some(name) => format!("{} (PID {})", name, pid),
-            None => format!("PID {}", pid),
-        })
-    }
-
     pub fn get_macos_input_status() -> MacInputStatus {
         MacInputStatus {
             accessibility: unsafe { AXIsProcessTrusted() },
@@ -1415,12 +1213,6 @@ pub mod macos_hook {
             tap_active: TAP_ACTIVE.load(Ordering::Acquire),
             tap_has_keyboard: TAP_HAS_KEYBOARD.load(Ordering::Acquire),
             hid_active: HID_ACTIVE.load(Ordering::Acquire),
-            hid_device_count: HID_DEVICE_COUNT.load(Ordering::Acquire),
-            appkit_active: APPKIT_MONITOR_ACTIVE.load(Ordering::Acquire),
-            secure_input_enabled: unsafe { IsSecureEventInputEnabled() != 0 },
-            tap_key_events: TAP_KEY_EVENTS.load(Ordering::Relaxed),
-            hid_key_events: HID_KEY_EVENTS.load(Ordering::Relaxed),
-            appkit_key_events: APPKIT_KEY_EVENTS.load(Ordering::Relaxed),
             key_events_received: KEY_EVENTS_RECEIVED.load(Ordering::Relaxed),
         }
     }
@@ -1431,7 +1223,6 @@ pub mod macos_hook {
                 let _ = CGRequestListenEventAccess();
             }
         }
-        ensure_appkit_keyboard_monitor();
         request_reconnect();
     }
 
@@ -1446,79 +1237,52 @@ pub mod macos_hook {
     }
 
     pub fn show_macos_diagnostics_dialog() {
-        std::thread::spawn(|| {
-            let st = get_macos_input_status();
-            let ax_txt = if st.accessibility {
-                "已授权"
-            } else {
-                "未生效"
-            };
-            let listen_txt = if st.input_monitoring {
-                "已授权"
-            } else {
-                "未生效"
-            };
-            let tap_txt = if st.tap_active && st.tap_has_keyboard {
-                format!("运行中（已收 {} 次按键）", st.tap_key_events)
-            } else if st.tap_active {
-                "仅鼠标（缺少键盘权限）".to_string()
-            } else {
-                "未运行".to_string()
-            };
-            let hid_txt = if st.hid_active {
-                format!(
-                    "运行中（已识别 {} 台键盘，已收 {} 次按键）",
-                    st.hid_device_count, st.hid_key_events
-                )
-            } else {
-                "未运行（需输入监控权限）".to_string()
-            };
-            let appkit_txt = if st.appkit_active {
-                format!("运行中（已收 {} 次按键）", st.appkit_key_events)
-            } else {
-                "未运行（需辅助功能权限）".to_string()
-            };
-            let secure_txt = if st.secure_input_enabled {
-                match detect_secure_input_owner() {
-                    Some(owner) => format!("已锁定（被 {} 占用）", owner),
-                    None => "已锁定（其他应用开启了安全键盘输入）".to_string(),
-                }
-            } else {
-                "未锁定（正常）".to_string()
-            };
-            let tip = if !st.accessibility || !st.input_monitoring {
-                "若系统设置里开关亮着但这里显示「未生效」，说明更新版本后系统权限缓存过期：请直接点击托盘「重置旧权限并重新授权」，或在系统设置中先点「-」删除旧 KuroCat 再点「+」重新添加，然后完全退出并重开 KuroCat。"
-            } else if st.secure_input_enabled {
-                "检测到系统当前处于「安全键盘输入」锁定状态，macOS 会临时拦截所有全局键盘监听（常见于终端菜单开启了「安全键盘输入」、密码管理器或网银控件）。关闭对应应用或取消勾选后即可立即恢复。"
-            } else if st.key_events_received == 0 {
-                "权限均已生效！请先随便敲几下键盘测试；若刚刚才打开权限或使用外置蓝牙键盘/Karabiner 仍无响应，请先完全退出 KuroCat（托盘「退出」）再重新打开，以刷新 macOS 15/26 进程级输入监控令牌。"
-            } else {
-                "键盘监听工作正常！"
-            };
+        let st = get_macos_input_status();
+        let ax_txt = if st.accessibility {
+            "已授权"
+        } else {
+            "未生效"
+        };
+        let listen_txt = if st.input_monitoring {
+            "已授权"
+        } else {
+            "未生效"
+        };
+        let tap_txt = if st.tap_active && st.tap_has_keyboard {
+            "运行中（键鼠）"
+        } else if st.tap_active {
+            "仅鼠标（缺少键盘权限）"
+        } else {
+            "未运行"
+        };
+        let hid_txt = if st.hid_active {
+            "运行中（兼容 Karabiner）"
+        } else {
+            "未运行（需输入监控权限）"
+        };
+        let tip = if !st.accessibility || !st.input_monitoring {
+            "若系统设置里开关亮着但这里显示「未生效」，说明更新版本后系统权限缓存过期：请直接点击托盘「重置旧权限并重新授权」，或在系统设置中先点「-」删除旧 KuroCat 再点「+」重新添加。"
+        } else if st.key_events_received == 0 {
+            "权限均已生效！请先随便敲几下键盘测试；若使用 Karabiner-Elements 仍无响应，可点击托盘「重新连接键盘监听」。"
+        } else {
+            "键盘监听工作正常！"
+        };
 
-            let msg = format!(
-                "辅助功能权限：{}\n输入监控权限：{}\nCGEventTap 通道：{}\nIOHIDManager 通道：{}\nAppKit 备用通道：{}\n安全键盘输入状态：{}\n累计全局按键：{} 次\n\n{}",
-                ax_txt,
-                listen_txt,
-                tap_txt,
-                hid_txt,
-                appkit_txt,
-                secure_txt,
-                st.key_events_received,
-                tip
-            );
-            let escaped = msg
-                .replace('\\', "\\\\")
-                .replace('"', "\\\"")
-                .replace('\n', "\\n");
-            let script = format!(
-                "display dialog \"{}\" with title \"KuroCat 键盘监听诊断\" buttons {{\"确定\"}} default button \"确定\"",
-                escaped
-            );
-            let _ = std::process::Command::new("osascript")
-                .args(["-e", &script])
-                .spawn();
-        });
+        let msg = format!(
+            "辅助功能权限：{}\n输入监控权限：{}\nCGEventTap 通道：{}\nIOHIDManager 通道：{}\n已收到全局按键：{} 次\n\n{}",
+            ax_txt, listen_txt, tap_txt, hid_txt, st.key_events_received, tip
+        );
+        let escaped = msg
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n");
+        let script = format!(
+            "display dialog \"{}\" with title \"KuroCat 键盘监听诊断\" buttons {{\"确定\"}} default button \"确定\"",
+            escaped
+        );
+        let _ = std::process::Command::new("osascript")
+            .args(["-e", &script])
+            .spawn();
     }
 
     pub fn main_display_size() -> (f64, f64) {
@@ -1788,7 +1552,6 @@ pub mod macos_hook {
                         let kc =
                             CGEventGetIntegerValueField(event, K_CG_KEYBOARD_EVENT_KEYCODE) as u16;
                         if let Some(vk) = macos_keycode_to_vk(kc) {
-                            TAP_KEY_EVENTS.fetch_add(1, Ordering::Relaxed);
                             let _ = tx.send(RawHookMsg::KeyDown {
                                 vk,
                                 scan: kc as u32,
@@ -1811,10 +1574,16 @@ pub mod macos_hook {
                         let kc =
                             CGEventGetIntegerValueField(event, K_CG_KEYBOARD_EVENT_KEYCODE) as u16;
                         let flags = CGEventGetFlags(event);
-                        let is_down = modifier_keycode_is_down(kc, flags);
+                        let is_down = match kc {
+                            0x38 | 0x3C => (flags & FLAG_SHIFT) != 0,
+                            0x3B | 0x3E => (flags & FLAG_CONTROL) != 0,
+                            0x3A | 0x3D => (flags & FLAG_OPTION) != 0,
+                            0x37 | 0x36 => (flags & FLAG_COMMAND) != 0,
+                            0x39 => (flags & FLAG_CAPS_LOCK) != 0,
+                            _ => false,
+                        };
                         if let Some(vk) = macos_keycode_to_vk(kc) {
                             if is_down {
-                                TAP_KEY_EVENTS.fetch_add(1, Ordering::Relaxed);
                                 let _ = tx.send(RawHookMsg::KeyDown {
                                     vk,
                                     scan: kc as u32,
@@ -1870,26 +1639,6 @@ pub mod macos_hook {
         event
     }
 
-    extern "C" fn hid_device_matched_callback(
-        _context: *mut c_void,
-        _result: IOReturn,
-        _sender: *mut c_void,
-        _device: IOHIDDeviceRef,
-    ) {
-        HID_DEVICE_COUNT.fetch_add(1, Ordering::AcqRel);
-    }
-
-    extern "C" fn hid_device_removed_callback(
-        _context: *mut c_void,
-        _result: IOReturn,
-        _sender: *mut c_void,
-        _device: IOHIDDeviceRef,
-    ) {
-        let _ = HID_DEVICE_COUNT.fetch_update(Ordering::AcqRel, Ordering::Acquire, |cur| {
-            Some(cur.saturating_sub(1))
-        });
-    }
-
     extern "C" fn hid_input_callback(
         _context: *mut c_void,
         _result: IOReturn,
@@ -1900,12 +1649,6 @@ pub mod macos_hook {
             return;
         }
         unsafe {
-            // Apple IOKit requirement: never call IOHIDValueGetIntegerValue on multi-byte NKRO /
-            // vendor HID reports (> sizeof(CFIndex)), which external Bluetooth MK keyboards emit!
-            let len = IOHIDValueGetLength(value);
-            if len <= 0 || len > 8 {
-                return;
-            }
             let elem = IOHIDValueGetElement(value);
             if elem.is_null() {
                 return;
@@ -1923,7 +1666,6 @@ pub mod macos_hook {
             let pressed = IOHIDValueGetIntegerValue(value) != 0;
             if let Some(tx) = HOOK_TX.get() {
                 if pressed {
-                    HID_KEY_EVENTS.fetch_add(1, Ordering::Relaxed);
                     let _ = tx.send(RawHookMsg::KeyDown {
                         vk,
                         scan: usage,
@@ -1950,14 +1692,9 @@ pub mod macos_hook {
         )
     }
 
-    unsafe fn make_hid_matching_dict(
-        page_key: &str,
-        usage_key: &str,
-        usage_page: i32,
-        usage: i32,
-    ) -> CFDictionaryRef {
-        let k_page = cf_string_from_str(page_key);
-        let k_usage = cf_string_from_str(usage_key);
+    unsafe fn make_hid_matching_dict(usage_page: i32, usage: i32) -> CFDictionaryRef {
+        let k_page = cf_string_from_str("DeviceUsagePage");
+        let k_usage = cf_string_from_str("DeviceUsage");
         let v_page = CFNumberCreate(
             std::ptr::null(),
             K_CF_NUMBER_SINT32_TYPE,
@@ -1994,48 +1731,20 @@ pub mod macos_hook {
     }
 
     /// Creates a non-exclusive read-only IOHIDManager subscribed to all Keyboard & Keypad
-    /// devices — matching BOTH DeviceUsage* and PrimaryUsage* so composite USB/Bluetooth
-    /// mechanical keyboards (#63) and Karabiner VirtualHIDKeyboard all attach cleanly.
+    /// devices (including Karabiner-Elements DriverKit VirtualHIDKeyboard).
     unsafe fn start_hid_keyboard_listener(rl: CFRunLoopRef) -> IOHIDManagerRef {
         let mgr = IOHIDManagerCreate(std::ptr::null(), K_IO_HID_OPTIONS_TYPE_NONE);
         if mgr.is_null() {
             return std::ptr::null_mut();
         }
-        let d_kb = make_hid_matching_dict(
-            "DeviceUsagePage",
-            "DeviceUsage",
-            K_HID_PAGE_GENERIC_DESKTOP,
-            K_HID_USAGE_GD_KEYBOARD,
-        );
-        let d_kp = make_hid_matching_dict(
-            "DeviceUsagePage",
-            "DeviceUsage",
-            K_HID_PAGE_GENERIC_DESKTOP,
-            K_HID_USAGE_GD_KEYPAD,
-        );
-        let p_kb = make_hid_matching_dict(
-            "PrimaryUsagePage",
-            "PrimaryUsage",
-            K_HID_PAGE_GENERIC_DESKTOP,
-            K_HID_USAGE_GD_KEYBOARD,
-        );
-        let p_kp = make_hid_matching_dict(
-            "PrimaryUsagePage",
-            "PrimaryUsage",
-            K_HID_PAGE_GENERIC_DESKTOP,
-            K_HID_USAGE_GD_KEYPAD,
-        );
-        if !d_kb.is_null() && !d_kp.is_null() && !p_kb.is_null() && !p_kp.is_null() {
-            let dicts = [
-                d_kb as *const c_void,
-                d_kp as *const c_void,
-                p_kb as *const c_void,
-                p_kp as *const c_void,
-            ];
+        let d_kb = make_hid_matching_dict(K_HID_PAGE_GENERIC_DESKTOP, K_HID_USAGE_GD_KEYBOARD);
+        let d_kp = make_hid_matching_dict(K_HID_PAGE_GENERIC_DESKTOP, K_HID_USAGE_GD_KEYPAD);
+        if !d_kb.is_null() && !d_kp.is_null() {
+            let dicts = [d_kb as *const c_void, d_kp as *const c_void];
             let arr = CFArrayCreate(
                 std::ptr::null(),
                 dicts.as_ptr(),
-                dicts.len() as isize,
+                2,
                 &kCFTypeArrayCallBacks as *const u8 as *const c_void,
             );
             if !arr.is_null() {
@@ -2043,30 +1752,18 @@ pub mod macos_hook {
                 CFRelease(arr);
             }
         }
-        for d in [d_kb, d_kp, p_kb, p_kp] {
-            if !d.is_null() {
-                CFRelease(d);
-            }
+        if !d_kb.is_null() {
+            CFRelease(d_kb);
+        }
+        if !d_kp.is_null() {
+            CFRelease(d_kp);
         }
 
-        HID_DEVICE_COUNT.store(0, Ordering::Release);
-        IOHIDManagerRegisterDeviceMatchingCallback(
-            mgr,
-            Some(hid_device_matched_callback),
-            std::ptr::null_mut(),
-        );
-        IOHIDManagerRegisterDeviceRemovalCallback(
-            mgr,
-            Some(hid_device_removed_callback),
-            std::ptr::null_mut(),
-        );
         IOHIDManagerRegisterInputValueCallback(mgr, Some(hid_input_callback), std::ptr::null_mut());
         IOHIDManagerScheduleWithRunLoop(mgr, rl, kCFRunLoopCommonModes);
 
         let ret = IOHIDManagerOpen(mgr, K_IO_HID_OPTIONS_TYPE_NONE);
         if ret != K_IO_RETURN_SUCCESS {
-            IOHIDManagerRegisterDeviceMatchingCallback(mgr, None, std::ptr::null_mut());
-            IOHIDManagerRegisterDeviceRemovalCallback(mgr, None, std::ptr::null_mut());
             IOHIDManagerRegisterInputValueCallback(mgr, None, std::ptr::null_mut());
             IOHIDManagerUnscheduleFromRunLoop(mgr, rl, kCFRunLoopCommonModes);
             CFRelease(mgr as *const c_void);
@@ -2104,9 +1801,6 @@ pub mod macos_hook {
                     }
                 }
                 HID_ACTIVE.store(false, Ordering::Release);
-                HID_DEVICE_COUNT.store(0, Ordering::Release);
-                IOHIDManagerRegisterDeviceMatchingCallback(mgr, None, std::ptr::null_mut());
-                IOHIDManagerRegisterDeviceRemovalCallback(mgr, None, std::ptr::null_mut());
                 IOHIDManagerRegisterInputValueCallback(mgr, None, std::ptr::null_mut());
                 IOHIDManagerUnscheduleFromRunLoop(mgr, rl, kCFRunLoopCommonModes);
                 IOHIDManagerClose(mgr, K_IO_HID_OPTIONS_TYPE_NONE);
@@ -2151,12 +1845,6 @@ pub mod macos_hook {
             }
             TAP_ACTIVE.store(!tap.is_null() && !tap_dead, Ordering::Release);
 
-            if ax_now && !APPKIT_MONITOR_ACTIVE.load(Ordering::Acquire) {
-                ensure_appkit_keyboard_monitor();
-            }
-            if ax_upgraded || listen_upgraded {
-                HID_RECONNECT_REQUESTED.store(true, Ordering::Release);
-            }
             if reconnect_requested || ax_upgraded || listen_upgraded || woke_from_sleep || tap_dead {
                 CFRunLoopStop(CFRunLoopGetCurrent());
             }
@@ -2217,44 +1905,28 @@ pub mod macos_hook {
                 SNAPSHOT_AX.store(ax_ok, Ordering::Release);
                 SNAPSHOT_LISTEN.store(listen_ok, Ordering::Release);
                 LAST_TICK_WALL_MS.store(wall_clock_ms(), Ordering::Release);
-                if ax_ok {
-                    ensure_appkit_keyboard_monitor();
-                }
 
-                // Channel 1 (#63): CGEventTap (mouse + keyboard).
-                // On macOS 15/26, a LISTEN_ONLY tap can succeed for mouse events while silently
-                // dropping keyboard events when ListenEvent TCC lags behind Accessibility or on
-                // external Bluetooth keyboards. When Accessibility is granted, prefer an
-                // Accessibility-backed HID-level pass-through tap (our callback only does an O(1)
-                // non-blocking channel send), then fall back to Session / ListenOnly / mouse-only.
+                // Channel 1: CGEventTap (mouse + keyboard; prefers passive LISTEN_ONLY, falls back
+                // to pass-through DEFAULT tap if ListenEvent TCC is lagging behind Accessibility,
+                // or mouse-only tap if keyboard is exclusively served via IOHIDManager)
                 let mut tap_has_kb = true;
-                let mut tap: CFMachPortRef = std::ptr::null_mut();
-                let attempts: &[(u32, u32)] = if ax_ok {
-                    &[
-                        (K_CG_HID_EVENT_TAP, K_CG_EVENT_TAP_OPTION_DEFAULT),
-                        (K_CG_SESSION_EVENT_TAP, K_CG_EVENT_TAP_OPTION_DEFAULT),
-                        (K_CG_HID_EVENT_TAP, K_CG_EVENT_TAP_OPTION_LISTEN_ONLY),
-                        (K_CG_SESSION_EVENT_TAP, K_CG_EVENT_TAP_OPTION_LISTEN_ONLY),
-                    ]
-                } else {
-                    &[
-                        (K_CG_HID_EVENT_TAP, K_CG_EVENT_TAP_OPTION_LISTEN_ONLY),
-                        (K_CG_SESSION_EVENT_TAP, K_CG_EVENT_TAP_OPTION_LISTEN_ONLY),
-                        (K_CG_SESSION_EVENT_TAP, K_CG_EVENT_TAP_OPTION_DEFAULT),
-                    ]
-                };
-                for &(loc, opt) in attempts {
+                let mut tap = CGEventTapCreate(
+                    K_CG_SESSION_EVENT_TAP,
+                    K_CG_HEAD_INSERT_EVENT_TAP,
+                    K_CG_EVENT_TAP_OPTION_LISTEN_ONLY,
+                    full_mask,
+                    tap_callback,
+                    std::ptr::null_mut(),
+                );
+                if tap.is_null() {
                     tap = CGEventTapCreate(
-                        loc,
+                        K_CG_SESSION_EVENT_TAP,
                         K_CG_HEAD_INSERT_EVENT_TAP,
-                        opt,
+                        K_CG_EVENT_TAP_OPTION_DEFAULT,
                         full_mask,
                         tap_callback,
                         std::ptr::null_mut(),
                     );
-                    if !tap.is_null() {
-                        break;
-                    }
                 }
                 if tap.is_null() {
                     tap_has_kb = false;
@@ -2403,7 +2075,7 @@ pub mod macos_hook {
 pub mod linux_hook {
     use super::{linux_evdev_to_vk, KeySource, RawHookMsg, HOOK_TX};
     use std::cell::RefCell;
-    use std::ffi::{c_char, c_int, c_long, c_uint, c_ulong, c_void};
+    use std::ffi::{c_char, c_int, c_uint, c_ulong, c_void};
     use std::fs::OpenOptions;
     use std::io::Read;
     use std::os::unix::fs::OpenOptionsExt;
@@ -2507,22 +2179,6 @@ pub mod linux_hook {
     type XRecordFreeContextFn = unsafe extern "C" fn(*mut c_void, c_ulong) -> c_int;
     type XRecordFreeDataFn = unsafe extern "C" fn(*mut XRecordInterceptData);
 
-    type XInternAtomFn = unsafe extern "C" fn(*mut c_void, *const c_char, c_int) -> c_ulong;
-    type XGetWindowPropertyFn = unsafe extern "C" fn(
-        *mut c_void,
-        c_ulong,
-        c_ulong,
-        c_long,
-        c_long,
-        c_int,
-        c_ulong,
-        *mut c_ulong,
-        *mut c_int,
-        *mut c_ulong,
-        *mut c_ulong,
-        *mut *mut u8,
-    ) -> c_int;
-
     struct X11Api {
         open_display: XOpenDisplayFn,
         close_display: XCloseDisplayFn,
@@ -2533,8 +2189,6 @@ pub mod linux_hook {
         sync: XSyncFn,
         xfree: XFreeFn,
         query_pointer: XQueryPointerFn,
-        intern_atom: Option<XInternAtomFn>,
-        get_window_property: Option<XGetWindowPropertyFn>,
     }
 
     struct XRecordApi {
@@ -2583,8 +2237,6 @@ pub mod linux_hook {
                     sync: load_sym(lib, b"XSync\0")?,
                     xfree: load_sym(lib, b"XFree\0")?,
                     query_pointer: load_sym(lib, b"XQueryPointer\0")?,
-                    intern_atom: load_sym(lib, b"XInternAtom\0"),
-                    get_window_property: load_sym(lib, b"XGetWindowProperty\0"),
                 })
             })
             .as_ref()
@@ -2663,12 +2315,9 @@ pub mod linux_hook {
         static QUERY_CONN: RefCell<Option<Option<X11QueryConn>>> = const { RefCell::new(None) };
     }
 
-    /// Queries X11 root pointer coordinates and live left-mouse-button state (`Button1Mask`).
-    /// Returns `None` on pure Wayland sessions where X11 display connection is unavailable.
-    pub fn query_pointer_state() -> Option<(i32, i32, bool)> {
-        const BUTTON1_MASK: c_uint = 1 << 8;
+    pub fn cursor_pos() -> Option<(i32, i32)> {
         if let Some(api) = x11_api() {
-            return QUERY_CONN.with(|cell| {
+            let queried = QUERY_CONN.with(|cell| {
                 let mut borrow = cell.borrow_mut();
                 if borrow.is_none() {
                     let conn = unsafe {
@@ -2713,163 +2362,14 @@ pub mod linux_hook {
                         LAST_CURSOR_X.store(root_x, Ordering::Relaxed);
                         LAST_CURSOR_Y.store(root_y, Ordering::Relaxed);
                         HAS_CURSOR.store(true, Ordering::Relaxed);
-                        return Some((root_x, root_y, (mask & BUTTON1_MASK) != 0));
+                        return Some((root_x, root_y));
                     }
                 }
                 None
             });
-        }
-        None
-    }
-
-    /// Queries the X11 `_NET_ACTIVE_WINDOW`'s `WM_CLASS` and whether `_NET_WM_STATE_FULLSCREEN`
-    /// is active, so Linux X11 sessions can yield below fullscreen Remote Desktop clients (#40)
-    /// using the already-`dlopen`ed `libX11.so.6` without adding any link dependencies.
-    pub fn query_active_window_fullscreen_wm_class() -> Option<(String, bool)> {
-        const XA_ATOM: c_ulong = 4;
-        const XA_STRING: c_ulong = 31;
-        const XA_WINDOW: c_ulong = 33;
-
-        let api = x11_api()?;
-        let intern_atom = api.intern_atom?;
-        let get_prop = api.get_window_property?;
-
-        QUERY_CONN.with(|cell| {
-            let mut borrow = cell.borrow_mut();
-            if borrow.is_none() {
-                let conn = unsafe {
-                    let dpy = (api.open_display)(std::ptr::null());
-                    if dpy.is_null() {
-                        None
-                    } else {
-                        let root = (api.default_root_window)(dpy);
-                        update_screen_size_from_display(api, dpy);
-                        Some(X11QueryConn {
-                            dpy,
-                            root,
-                            close_fn: api.close_display,
-                        })
-                    }
-                };
-                *borrow = Some(conn);
+            if queried.is_some() {
+                return queried;
             }
-            let conn = borrow.as_ref()?.as_ref()?;
-            unsafe {
-                let atom_active =
-                    intern_atom(conn.dpy, b"_NET_ACTIVE_WINDOW\0".as_ptr() as *const c_char, 1);
-                let atom_wm_class =
-                    intern_atom(conn.dpy, b"WM_CLASS\0".as_ptr() as *const c_char, 1);
-                let atom_wm_state =
-                    intern_atom(conn.dpy, b"_NET_WM_STATE\0".as_ptr() as *const c_char, 1);
-                let atom_fullscreen = intern_atom(
-                    conn.dpy,
-                    b"_NET_WM_STATE_FULLSCREEN\0".as_ptr() as *const c_char,
-                    1,
-                );
-                if atom_active == 0 || atom_wm_class == 0 {
-                    return None;
-                }
-
-                let mut actual_type: c_ulong = 0;
-                let mut actual_format: c_int = 0;
-                let mut nitems: c_ulong = 0;
-                let mut bytes_after: c_ulong = 0;
-                let mut prop: *mut u8 = std::ptr::null_mut();
-                let rc = get_prop(
-                    conn.dpy,
-                    conn.root,
-                    atom_active,
-                    0,
-                    1,
-                    0,
-                    XA_WINDOW,
-                    &mut actual_type,
-                    &mut actual_format,
-                    &mut nitems,
-                    &mut bytes_after,
-                    &mut prop,
-                );
-                if rc != 0 || prop.is_null() || actual_format != 32 || nitems == 0 {
-                    if !prop.is_null() {
-                        (api.xfree)(prop as *mut c_void);
-                    }
-                    return None;
-                }
-                let active_win = *(prop as *const c_ulong);
-                (api.xfree)(prop as *mut c_void);
-                if active_win == 0 {
-                    return None;
-                }
-
-                let mut prop_cls: *mut u8 = std::ptr::null_mut();
-                let mut cls_nitems: c_ulong = 0;
-                let mut cls_fmt: c_int = 0;
-                let rc_cls = get_prop(
-                    conn.dpy,
-                    active_win,
-                    atom_wm_class,
-                    0,
-                    64,
-                    0,
-                    XA_STRING,
-                    &mut actual_type,
-                    &mut cls_fmt,
-                    &mut cls_nitems,
-                    &mut bytes_after,
-                    &mut prop_cls,
-                );
-                let wm_class = if rc_cls == 0 && !prop_cls.is_null() && cls_fmt == 8 && cls_nitems > 0 {
-                    let bytes = std::slice::from_raw_parts(prop_cls, cls_nitems as usize);
-                    let text: String = bytes
-                        .iter()
-                        .map(|&b| if b == 0 { b' ' } else { b })
-                        .map(char::from)
-                        .collect();
-                    (api.xfree)(prop_cls as *mut c_void);
-                    text.trim().to_string()
-                } else {
-                    if !prop_cls.is_null() {
-                        (api.xfree)(prop_cls as *mut c_void);
-                    }
-                    return None;
-                };
-
-                let mut is_fullscreen = false;
-                if atom_wm_state != 0 && atom_fullscreen != 0 {
-                    let mut prop_st: *mut u8 = std::ptr::null_mut();
-                    let mut st_nitems: c_ulong = 0;
-                    let mut st_fmt: c_int = 0;
-                    let rc_st = get_prop(
-                        conn.dpy,
-                        active_win,
-                        atom_wm_state,
-                        0,
-                        16,
-                        0,
-                        XA_ATOM,
-                        &mut actual_type,
-                        &mut st_fmt,
-                        &mut st_nitems,
-                        &mut bytes_after,
-                        &mut prop_st,
-                    );
-                    if rc_st == 0 && !prop_st.is_null() && st_fmt == 32 && st_nitems > 0 {
-                        let atoms = std::slice::from_raw_parts(prop_st as *const c_ulong, st_nitems as usize);
-                        is_fullscreen = atoms.iter().any(|&a| a == atom_fullscreen);
-                    }
-                    if !prop_st.is_null() {
-                        (api.xfree)(prop_st as *mut c_void);
-                    }
-                }
-
-                Some((wm_class, is_fullscreen))
-            }
-        })
-    }
-
-    pub fn cursor_pos() -> Option<(i32, i32)> {
-        if let Some((x, y, _)) = query_pointer_state() {
-            return Some((x, y));
         }
         if HAS_CURSOR.load(Ordering::Relaxed) {
             Some((
@@ -3272,31 +2772,6 @@ mod tests {
             dedup.on_key_down(0x43, KeySource::Hid, t2 + Duration::from_millis(20)),
             Some(false)
         );
-
-        // 3-channel deduplication (#63): Primary + Hid + AppKit all fire for one physical keypress
-        let t3 = t2 + Duration::from_millis(200);
-        assert_eq!(dedup.on_key_down(0x44, KeySource::AppKit, t3), Some(false));
-        assert_eq!(
-            dedup.on_key_down(0x44, KeySource::Primary, t3 + Duration::from_millis(2)),
-            None
-        );
-        assert_eq!(
-            dedup.on_key_down(0x44, KeySource::Hid, t3 + Duration::from_millis(4)),
-            None
-        );
-        assert!(dedup.on_key_up(0x44, KeySource::AppKit));
-        assert!(!dedup.on_key_up(0x44, KeySource::Primary));
-        assert!(!dedup.on_key_up(0x44, KeySource::Hid));
-    }
-
-    #[test]
-    fn parses_macos_secure_input_pid_from_ioreg_output() {
-        let sample = r#"
-          | "IOConsoleUsers" = ({"kCGSSessionUserNameKey"="alice","kCGSSessionSecureInputPID"=4821,"kCGSSessionOnConsoleKey"=Yes})
-        "#;
-        assert_eq!(parse_macos_secure_input_pid(sample), Some(4821));
-        assert_eq!(parse_macos_secure_input_pid("no secure input here"), None);
-        assert_eq!(parse_macos_secure_input_pid("kCGSSessionSecureInputPID = 0"), None);
     }
 
     #[test]

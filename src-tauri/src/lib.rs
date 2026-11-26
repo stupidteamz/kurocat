@@ -99,6 +99,75 @@ fn clamp_pet_drag_position(
     (x.clamp(min_x, max_x), y.clamp(min_y, max_y))
 }
 
+/// Computes the union bounding box `(min_x, min_y, max_x, max_y)` in AppKit Y-up points
+/// across all connected `NSScreen` frames `(origin_x, origin_y, width, height)`.
+#[cfg(any(target_os = "macos", test))]
+pub(crate) fn macos_screens_union(frames: &[(f64, f64, f64, f64)]) -> Option<(f64, f64, f64, f64)> {
+    let mut iter = frames.iter().copied();
+    let (x0, y0, w0, h0) = iter.next()?;
+    let mut min_x = x0;
+    let mut min_y = y0;
+    let mut max_x = x0 + w0.max(0.0);
+    let mut max_y = y0 + h0.max(0.0);
+    for (x, y, w, h) in iter {
+        min_x = min_x.min(x);
+        min_y = min_y.min(y);
+        max_x = max_x.max(x + w.max(0.0));
+        max_y = max_y.max(y + h.max(0.0));
+    }
+    Some((min_x, min_y, max_x, max_y))
+}
+
+/// Computes valid AppKit bottom-left `frame.origin` bounds `(min_x, max_x, min_y, max_y)` for a
+/// dragged pet window across the multi-screen union box, allowing ~17% transparent headspace
+/// above the cat's ears to slide past the screen top edge while keeping >=68% visible above the
+/// bottom edge and ~10% side margins.
+#[cfg(any(target_os = "macos", test))]
+pub(crate) fn macos_drag_bounds(
+    win_w: f64,
+    win_h: f64,
+    union_min_x: f64,
+    union_min_y: f64,
+    union_max_x: f64,
+    union_max_y: f64,
+) -> (f64, f64, f64, f64) {
+    let win_w = win_w.max(1.0);
+    let win_h = win_h.max(1.0);
+    let v_width = (union_max_x - union_min_x).max(320.0);
+    let v_height = (union_max_y - union_min_y).max(240.0);
+    let v_right = union_min_x + v_width;
+    let v_top = union_min_y + v_height;
+
+    let top_headroom = (win_h * 0.17).round();
+    let side_margin = (win_w * 0.10).round();
+    let min_visible_h = (win_h * 0.68).round();
+
+    let min_x = union_min_x - side_margin;
+    let max_x = (v_right - win_w + side_margin).max(min_x);
+    // AppKit Y-up: `origin.y` is the window bottom edge; `origin.y + win_h` is the top edge.
+    let min_y = union_min_y + min_visible_h - win_h;
+    let max_y = (v_top - win_h + top_headroom).max(min_y);
+
+    (min_x, max_x, min_y, max_y)
+}
+
+/// Converts a Quartz Y-down cursor delta `(cur_cursor - start_cursor)` into a clamped AppKit
+/// Y-up window `frame.origin`.
+#[cfg(any(target_os = "macos", test))]
+pub(crate) fn macos_drag_target_origin(
+    start_origin: (f64, f64),
+    start_cursor: (f64, f64),
+    cur_cursor: (f64, f64),
+    bounds: (f64, f64, f64, f64),
+) -> (f64, f64) {
+    let dx = cur_cursor.0 - start_cursor.0;
+    let dy = cur_cursor.1 - start_cursor.1;
+    let raw_x = start_origin.0 + dx;
+    let raw_y = start_origin.1 - dy;
+    let (min_x, max_x, min_y, max_y) = bounds;
+    (raw_x.clamp(min_x, max_x), raw_y.clamp(min_y, max_y))
+}
+
 fn resize_window_anchored_bottom_right(
     win: &tauri::WebviewWindow,
     layout: &str,
@@ -944,17 +1013,119 @@ fn save_tail_picker_selection(
     Ok(updated)
 }
 
-#[tauri::command]
-fn set_dragging(state: State<'_, AppState>, dragging: bool) {
-    state.dragging.store(dragging, Ordering::Relaxed);
+#[cfg(target_os = "macos")]
+static MACOS_NATIVE_DRAG_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+#[cfg(target_os = "macos")]
+struct MacosDragGuard {
+    dragging: Arc<AtomicBool>,
 }
 
-/// Native 120Hz unclamped pointer drag on Windows:
-/// Bypasses Windows' `WM_NCLBUTTONDOWN(HTCAPTION)` titlebar drag loop so Aero Snap never fights
-/// the user and the transparent headspace above the cat's ears can smoothly slide above `y = 0`,
-/// allowing the cat itself to reach the very top edge of any monitor cleanly.
-/// Returns `true` when handled natively (Windows); `false` on other platforms so the frontend
-/// falls back to Tauri's `startDragging()`.
+#[cfg(target_os = "macos")]
+impl Drop for MacosDragGuard {
+    fn drop(&mut self) {
+        self.dragging.store(false, Ordering::Release);
+        MACOS_NATIVE_DRAG_ACTIVE.store(false, Ordering::Release);
+    }
+}
+
+/// Native 120Hz AppKit drag loop for macOS (#59):
+/// Drives `NSWindow::setFrameOrigin:` directly from CoreGraphics cursor & left-button state
+/// (`CGEventCreate`/`CGEventGetLocation` + `CGEventSourceButtonState`, requiring zero
+/// Accessibility/Input Monitoring permissions). Bypasses `performWindowDragWithEvent:`, which
+/// silently fails when WebKit delivers `mousedown` asynchronously or when an Accessory/unfocused
+/// borderless window loses `[NSApp currentEvent]`.
+#[cfg(target_os = "macos")]
+fn run_macos_native_drag(app: AppHandle, initial_cursor_pts: Option<(f64, f64)>) -> bool {
+    if MACOS_NATIVE_DRAG_ACTIVE
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        // If JS `start_pet_drag` arrived right after the unfocused hit-test fallback already
+        // claimed this drag, wait until the active drag finishes and return `true` so JS never
+        // falls back to broken `getCurrentWindow().startDragging()`.
+        if initial_cursor_pts.is_none() {
+            while MACOS_NATIVE_DRAG_ACTIVE.load(Ordering::Acquire) {
+                std::thread::sleep(Duration::from_millis(8));
+            }
+            return true;
+        }
+        return false;
+    }
+
+    let (dragging_flag, paused_guard) = {
+        let state = app.state::<AppState>();
+        (state.dragging.clone(), state.paused_guard.clone())
+    };
+    dragging_flag.store(true, Ordering::Release);
+    let guard = MacosDragGuard {
+        dragging: dragging_flag,
+    };
+
+    let Some((start_cx, start_cy)) =
+        initial_cursor_pts.or_else(input_hook::macos_hook::cursor_pos_points)
+    else {
+        return false;
+    };
+    let Some(snap) = macos_window::drag_snapshot(&app) else {
+        return false;
+    };
+    if snap.width <= 0.0 || snap.height <= 0.0 {
+        return false;
+    }
+
+    let bounds = (snap.min_x, snap.max_x, snap.min_y, snap.max_y);
+    let mut last_x = snap.origin_x;
+    let mut last_y = snap.origin_y;
+    let mut none_streak: u8 = 0;
+
+    while input_hook::macos_hook::is_left_mouse_down() {
+        if paused_guard.load(Ordering::Relaxed) {
+            break;
+        }
+        if let Some((cur_x, cur_y)) = input_hook::macos_hook::cursor_pos_points() {
+            none_streak = 0;
+            let (nx, ny) = macos_drag_target_origin(
+                (snap.origin_x, snap.origin_y),
+                (start_cx, start_cy),
+                (cur_x, cur_y),
+                bounds,
+            );
+            if (nx - last_x).abs() >= 0.5 || (ny - last_y).abs() >= 0.5 {
+                last_x = nx;
+                last_y = ny;
+                macos_window::set_window_origin(&app, nx, ny);
+            }
+        } else {
+            none_streak = none_streak.saturating_add(1);
+            if none_streak >= 10 {
+                break;
+            }
+        }
+        std::thread::sleep(Duration::from_millis(8));
+    }
+
+    drop(guard);
+    save_window_pos(app);
+    true
+}
+
+#[tauri::command]
+fn set_dragging(state: State<'_, AppState>, dragging: bool) {
+    #[cfg(target_os = "macos")]
+    if !dragging && MACOS_NATIVE_DRAG_ACTIVE.load(Ordering::Acquire) {
+        return;
+    }
+    state.dragging.store(dragging, Ordering::Release);
+}
+
+/// Native 120Hz unclamped pointer drag on Windows and macOS:
+/// - Windows: bypasses `WM_NCLBUTTONDOWN(HTCAPTION)` so Aero Snap never fights the user and
+///   transparent headspace above the cat's ears can slide cleanly above `y = 0`.
+/// - macOS: bypasses `performWindowDragWithEvent:` (broken under Accessory + unfocused borderless
+///   windows / async WebKit IPC on modern macOS, #59) via CoreGraphics + `NSWindow::setFrameOrigin:`.
+/// Returns `true` when handled natively; `false` on other platforms so the frontend falls back
+/// to Tauri's `startDragging()`.
 #[tauri::command]
 async fn start_pet_drag(app: AppHandle) -> bool {
     #[cfg(windows)]
@@ -1072,7 +1243,13 @@ async fn start_pet_drag(app: AppHandle) -> bool {
         save_window_pos(app);
         true
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    {
+        tauri::async_runtime::spawn_blocking(move || run_macos_native_drag(app, None))
+            .await
+            .unwrap_or(false)
+    }
+    #[cfg(all(not(windows), not(target_os = "macos")))]
     {
         let _ = app;
         false
@@ -1941,15 +2118,29 @@ fn start_hit_test_loop(
         let mut fg_above_attempts: u8 = 0;
         #[cfg(windows)]
         let mut last_topmost_reassert = Instant::now() - Duration::from_secs(5);
+        #[cfg(target_os = "macos")]
+        let mut mac_lbtn_was_down = false;
+        #[cfg(target_os = "macos")]
+        let mut mac_press_start: Option<(f64, f64)> = None;
 
         loop {
             std::thread::sleep(Duration::from_millis(sleep_ms));
 
             if paused_guard.load(Ordering::Relaxed) {
+                #[cfg(target_os = "macos")]
+                {
+                    mac_press_start = None;
+                    mac_lbtn_was_down = true;
+                }
                 sleep_ms = 120;
                 continue;
             }
             let Some(win) = app.get_webview_window("main") else {
+                #[cfg(target_os = "macos")]
+                {
+                    mac_press_start = None;
+                    mac_lbtn_was_down = true;
+                }
                 sleep_ms = 120;
                 continue;
             };
@@ -1965,6 +2156,11 @@ fn start_hit_test_loop(
                     continue;
                 }
             } else if !win.is_visible().unwrap_or(false) {
+                #[cfg(target_os = "macos")]
+                {
+                    mac_press_start = None;
+                    mac_lbtn_was_down = true;
+                }
                 sleep_ms = 120;
                 continue;
             }
@@ -2008,6 +2204,10 @@ fn start_hit_test_loop(
 
             let is_menu = menu_open.load(Ordering::Relaxed);
             let picker_bounds = *tail_picker_bounds.lock().unwrap();
+            #[cfg(target_os = "macos")]
+            let is_drag =
+                dragging.load(Ordering::Acquire) || MACOS_NATIVE_DRAG_ACTIVE.load(Ordering::Acquire);
+            #[cfg(not(target_os = "macos"))]
             let is_drag = dragging.load(Ordering::Relaxed);
             let is_banner = update_banner_open.load(Ordering::Relaxed);
 
@@ -2193,6 +2393,47 @@ fn start_hit_test_loop(
                 }
             }
 
+            // macOS unfocused first-click drag fallback (#59):
+            // Under ActivationPolicy::Accessory + focus:false, WKWebView may swallow or delay the
+            // first left-mouse press when another app is active (`acceptsFirstMouse`). Detect a
+            // left-button drag gesture >= 4pt over the interactive pet silhouette directly via
+            // CoreGraphics and launch the native drag loop without waiting on WebKit.
+            #[cfg(target_os = "macos")]
+            {
+                let lbtn = input_hook::macos_hook::is_left_mouse_down();
+                if is_drag || effective_locked || is_menu || is_banner || picker_bounds.is_some() {
+                    mac_press_start = None;
+                } else if !mac_lbtn_was_down && lbtn {
+                    mac_press_start = if over_interactive {
+                        input_hook::macos_hook::cursor_pos_points()
+                    } else {
+                        None
+                    };
+                } else if lbtn {
+                    if let Some((px, py)) = mac_press_start {
+                        if !dragging.load(Ordering::Acquire)
+                            && !MACOS_NATIVE_DRAG_ACTIVE.load(Ordering::Acquire)
+                        {
+                            if let Some((cur_x, cur_y)) = input_hook::macos_hook::cursor_pos_points()
+                            {
+                                if (cur_x - px).hypot(cur_y - py) >= 4.0 {
+                                    mac_press_start = None;
+                                    let app_for_drag = app.clone();
+                                    std::thread::spawn(move || {
+                                        let _ = run_macos_native_drag(app_for_drag, Some((px, py)));
+                                    });
+                                }
+                            }
+                        } else {
+                            mac_press_start = None;
+                        }
+                    }
+                } else {
+                    mac_press_start = None;
+                }
+                mac_lbtn_was_down = lbtn;
+            }
+
             let state_changed = over_cat != last_over_cat
                 || inside_pet != last_inside_pet
                 || alt_override != last_alt_override
@@ -2230,7 +2471,18 @@ fn start_hit_test_loop(
 
             // Adaptive polling interval: fast 25ms near/over pet window, low-overhead 50-65ms elsewhere!
             let near_window = rx >= -0.15 && rx <= 1.15 && ry >= -0.15 && ry <= 1.15;
-            sleep_ms = if near_window || is_drag || is_menu || picker_bounds.is_some() || alt_override {
+            #[cfg(target_os = "macos")]
+            let mac_drag_armed = mac_press_start.is_some();
+            #[cfg(not(target_os = "macos"))]
+            let mac_drag_armed = false;
+            sleep_ms = if mac_drag_armed {
+                12
+            } else if near_window
+                || is_drag
+                || is_menu
+                || picker_bounds.is_some()
+                || alt_override
+            {
                 25
             } else if game_now {
                 65
@@ -3215,6 +3467,64 @@ mod side_menu_layout_tests {
         let (lx, by) = super::clamp_pet_drag_position(-500, 2000, 420, 440, 0, 0, 1920, 1080);
         assert_eq!(lx, -42);
         assert!(by <= 1080 - 290 && by >= 700, "pet body stays safely visible at bottom edge");
+    }
+
+    #[test]
+    fn macos_drag_delta_converts_quartz_y_down_to_appkit_y_up_with_clamping() {
+        // Single M3 MacBook Retina logical display: 1512x982 pts, AppKit origin (0, 0)
+        let union = super::macos_screens_union(&[(0.0, 0.0, 1512.0, 982.0)]).unwrap();
+        assert_eq!(union, (0.0, 0.0, 1512.0, 982.0));
+
+        let bounds = super::macos_drag_bounds(420.0, 440.0, union.0, union.1, union.2, union.3);
+        // side_margin = 42, top_headroom = 75, min_visible_h = 299
+        assert_eq!(bounds, (-42.0, 1134.0, -141.0, 617.0));
+
+        // Dragging right +100pt and UP -120pt in Quartz Y-down must move AppKit origin (+100, +120)
+        let (nx, ny) =
+            super::macos_drag_target_origin((500.0, 200.0), (600.0, 500.0), (700.0, 380.0), bounds);
+        assert_eq!((nx, ny), (600.0, 320.0));
+
+        // Dragging far UP lets ~17% transparent headspace slide past top bezel (982 - 440 + 75 = 617)
+        let (tx, ty) =
+            super::macos_drag_target_origin((500.0, 200.0), (600.0, 500.0), (600.0, -400.0), bounds);
+        assert_eq!((tx, ty), (500.0, 617.0));
+
+        // Dragging far DOWN keeps >=68% visible above bottom edge (0 + 299 - 440 = -141)
+        let (bx, by) =
+            super::macos_drag_target_origin((500.0, 200.0), (600.0, 500.0), (600.0, 1800.0), bounds);
+        assert_eq!((bx, by), (500.0, -141.0));
+
+        // Dragging far LEFT / RIGHT clamps to ~10% side margins
+        let (lx, _) =
+            super::macos_drag_target_origin((500.0, 200.0), (600.0, 500.0), (-900.0, 500.0), bounds);
+        let (rx, _) =
+            super::macos_drag_target_origin((500.0, 200.0), (600.0, 500.0), (2900.0, 500.0), bounds);
+        assert_eq!(lx, -42.0);
+        assert_eq!(rx, 1134.0);
+    }
+
+    #[test]
+    fn macos_drag_spans_multi_monitor_union_across_negative_external_display() {
+        // External monitor to the left at (-2304, 120, 2304x1296) + primary at (0, 0, 1512x982)
+        let union = super::macos_screens_union(&[
+            (0.0, 0.0, 1512.0, 982.0),
+            (-2304.0, 120.0, 2304.0, 1296.0),
+        ])
+        .unwrap();
+        assert_eq!(union, (-2304.0, 0.0, 1512.0, 1416.0));
+        assert_eq!(super::macos_screens_union(&[]), None);
+
+        let bounds = super::macos_drag_bounds(420.0, 440.0, union.0, union.1, union.2, union.3);
+        assert_eq!(bounds, (-2346.0, 1134.0, -141.0, 1051.0));
+
+        // Moving left by 800pt and up by 500pt crosses cleanly into the negative-X external display
+        let (nx, ny) = super::macos_drag_target_origin(
+            (100.0, 200.0),
+            (300.0, 600.0),
+            (-500.0, 100.0),
+            bounds,
+        );
+        assert_eq!((nx, ny), (-700.0, 700.0));
     }
 
     #[test]
