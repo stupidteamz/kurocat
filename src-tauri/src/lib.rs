@@ -3052,6 +3052,7 @@ fn probe_linux_webkitgtk_version() -> Option<(u32, u32, u32)> {
     use std::ffi::{c_char, c_int, c_void};
 
     const RTLD_LAZY: c_int = 0x00001;
+    const RTLD_NOLOAD: c_int = 0x00004;
     extern "C" {
         fn dlopen(filename: *const c_char, flag: c_int) -> *mut c_void;
         fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
@@ -3060,22 +3061,10 @@ fn probe_linux_webkitgtk_version() -> Option<(u32, u32, u32)> {
     type VersionFn = unsafe extern "C" fn() -> u32;
 
     unsafe {
-        // First try symbols already linked into the process (RTLD_DEFAULT = NULL on glibc),
-        // then fall back to opening libwebkit2gtk-4.1.so.0 / 4.0.so.37.
-        let mut handles: [*mut c_void; 3] = [std::ptr::null_mut(); 3];
-        let mut count = 1usize; // index 0 = RTLD_DEFAULT (null)
-        for lib in [
-            b"libwebkit2gtk-4.1.so.0\0".as_slice(),
-            b"libwebkit2gtk-4.0.so.37\0".as_slice(),
-        ] {
-            let h = dlopen(lib.as_ptr() as *const c_char, RTLD_LAZY);
-            if !h.is_null() {
-                handles[count] = h;
-                count += 1;
-            }
-        }
-
-        for &h in &handles[..count] {
+        // Check already-linked symbols first (RTLD_DEFAULT = NULL on glibc), and only
+        // fall back to libwebkit2gtk-4.1.so.0 (NEVER dlopen libwebkit2gtk-4.0.so.37,
+        // which pulls in libsoup2 alongside wry's libsoup3 and aborts with SIGTRAP!).
+        let try_handle = |h: *mut c_void| -> Option<(u32, u32, u32)> {
             let maj_sym = dlsym(h, b"webkit_get_major_version\0".as_ptr() as *const c_char);
             let min_sym = dlsym(h, b"webkit_get_minor_version\0".as_ptr() as *const c_char);
             let mic_sym = dlsym(h, b"webkit_get_micro_version\0".as_ptr() as *const c_char);
@@ -3087,6 +3076,29 @@ fn probe_linux_webkitgtk_version() -> Option<(u32, u32, u32)> {
                 if v.0 > 0 {
                     return Some(v);
                 }
+            }
+            None
+        };
+
+        if let Some(v) = try_handle(std::ptr::null_mut()) {
+            return Some(v);
+        }
+        let h_noload = dlopen(
+            b"libwebkit2gtk-4.1.so.0\0".as_ptr() as *const c_char,
+            RTLD_LAZY | RTLD_NOLOAD,
+        );
+        if !h_noload.is_null() {
+            if let Some(v) = try_handle(h_noload) {
+                return Some(v);
+            }
+        }
+        let h_41 = dlopen(
+            b"libwebkit2gtk-4.1.so.0\0".as_ptr() as *const c_char,
+            RTLD_LAZY,
+        );
+        if !h_41.is_null() {
+            if let Some(v) = try_handle(h_41) {
+                return Some(v);
             }
         }
     }
@@ -3849,6 +3861,17 @@ mod side_menu_layout_tests {
         assert!(!overridden.disable_dmabuf);
         assert!(!overridden.disable_nv_explicit_sync);
         assert!(!overridden.prefer_x11);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_webkit_version_probe_never_loads_webkit_4_0() {
+        // Must safely query the linked webkit2gtk-4.1 (libsoup3) without pulling in libsoup2.
+        let ver = super::probe_linux_webkitgtk_version();
+        if let Some((major, minor, _)) = ver {
+            assert_eq!(major, 2);
+            assert!(minor >= 32);
+        }
     }
 
     #[test]
