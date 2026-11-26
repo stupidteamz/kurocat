@@ -61,6 +61,7 @@
 - **🖥️ Windows 7 SP1（64bit 専用ポータブル版 · `v5.1.2`）**：[**`KuroCat-v5.1.2-win7-x64-portable.zip`**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-v5.1.2-win7-x64-portable.zip)（178.94 MB）｜[**高速ミラー**](https://qianyi.one/kurocat/releases/v5.1.2/KuroCat-v5.1.2-win7-x64-portable.zip)
   - ネイティブ PE 6.01 ビルド。Win7 最終対応オフライン **WebView2 109.0.1518.78** を同梱し、Aero ON/OFF を問わず白枠・ギザギザゼロの **256 段階ピクセル透過（`UpdateLayeredWindow`）** に対応。すべて展開し `KuroCat.exe` と `WebView2Runtime` を同フォルダに置いて起動してください。
 - **🍎 macOS 10.15 Catalina+（Apple Silicon M1–M4 & Intel ユニバーサル · `v5.1.2`）**：[**`KuroCat-v5.1.2-macos-universal.dmg`**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-v5.1.2-macos-universal.dmg)（5.93 MB）｜[**高速ミラー**](https://qianyi.one/kurocat/releases/v5.1.2/KuroCat-v5.1.2-macos-universal.dmg)
+  - **🍺 Homebrew でワンライン導入（推奨）**：`brew install --cask qianyiai/tap/kurocat`（`brew upgrade --cask kurocat` で更新可能・検疫属性も自動解除）。
   - `.dmg` を開き `KuroCat.app` を「アプリケーション」フォルダへドラッグして起動。3D/2D 切替・65%/108 キー・全 7 スキン内蔵。
   - **初回起動時（未公証オープンソース）**：「開発元を確認できない」「破損しています」と表示された場合は、ターミナルで一度だけ `xattr -cr /Applications/KuroCat.app` を実行してください（次回以降のアプリ内自動更新では不要）。
   - **キー・マウス監視権限**：「システム設定 → プライバシーとセキュリティ」で **アクセシビリティ** と **入力監視** の両方に `KuroCat` を許可してください（Karabiner-Elements 併用対応）。
