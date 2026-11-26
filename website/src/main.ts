@@ -1159,20 +1159,6 @@ function initMcpCodeTabs(): void {
       });
     });
   });
-  // Donate EVM address copy
-  const donateBtn = document.getElementById('copy-donate-btn');
-  const donateAddrEl = document.getElementById('donate-evm-addr');
-  if (donateBtn && donateAddrEl) {
-    donateBtn.addEventListener('click', () => {
-      const addr = (donateAddrEl.textContent || '0x40995b4c9ad8cd4356417a34ab94fa20d5844617').trim();
-      navigator.clipboard.writeText(addr).then(() => {
-        donateBtn.textContent = i18n.fmt.copied();
-        window.setTimeout(() => {
-          donateBtn.textContent = i18n.text['donate.copy'] || i18n.fmt.copyShort();
-        }, 1600);
-      });
-    });
-  }
 }
 
 function initPolish(): void {
