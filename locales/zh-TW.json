@@ -111,7 +111,9 @@
     "check_update": "檢查更新 v{ver}",
     "update_ready": "升級 v{ver}",
     "checking_short": "偵測中...",
-    "quit": "結束"
+    "quit": "結束",
+    "kb_lang_en": "English",
+    "kb_lang_th": "ไทย"
   },
   "breeds": {
     "black": "經典小黑貓",

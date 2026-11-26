@@ -26,12 +26,13 @@ interface AppSettings {
   autostart: boolean;
   catBreed: string;
   mcpEnabled: boolean;
-  mcpPort: number;
-  keyboardLayout: KeyboardLayoutId;
-  keyboardOrientation: KeyboardOrientation;
-  privacyPasswordGuard: boolean;
-  tailKeyMode: TailKeyMode;
-  tailKeyIds: string[];
+    mcpPort: number;
+    keyboardLayout: KeyboardLayoutId;
+    keyboardLang?: 'en' | 'th';
+    keyboardOrientation: KeyboardOrientation;
+    privacyPasswordGuard: boolean;
+    tailKeyMode: TailKeyMode;
+    tailKeyIds: string[];
   obsEnabled: boolean;
   obsPort: number;
   obsHidePet: boolean;
@@ -85,12 +86,13 @@ let settings: AppSettings = {
   autostart: false,
   catBreed: 'black',
   mcpEnabled: true,
-  mcpPort: 27420,
-  keyboardLayout: '65',
-  keyboardOrientation: 'cat',
-  privacyPasswordGuard: true,
-  tailKeyMode: 'smart',
-  tailKeyIds: [...DEFAULT_TAIL_KEY_IDS],
+    mcpPort: 27420,
+    keyboardLayout: '65',
+    keyboardLang: 'en',
+    keyboardOrientation: 'cat',
+    privacyPasswordGuard: true,
+    tailKeyMode: 'smart',
+    tailKeyIds: [...DEFAULT_TAIL_KEY_IDS],
   obsEnabled: false,
   obsPort: 27421,
   obsHidePet: false,
@@ -349,13 +351,17 @@ function syncUI(): void {
   }
 
   const kbLayout: KeyboardLayoutId = settings.keyboardLayout === '108' ? '108' : '65';
-  const kbOrient: KeyboardOrientation = settings.keyboardOrientation === 'viewer' ? 'viewer' : 'cat';
-  document.querySelectorAll<HTMLButtonElement>('[data-kblayout]').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.kblayout === kbLayout);
-  });
-  document.querySelectorAll<HTMLButtonElement>('[data-kborient]').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.kborient === kbOrient);
-  });
+    const kbLang = settings.keyboardLang === 'th' ? 'th' : 'en';
+    const kbOrient: KeyboardOrientation = settings.keyboardOrientation === 'viewer' ? 'viewer' : 'cat';
+    document.querySelectorAll<HTMLButtonElement>('[data-kblayout]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.kblayout === kbLayout);
+    });
+    document.querySelectorAll<HTMLButtonElement>('[data-kborient]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.kborient === kbOrient);
+    });
+    document.querySelectorAll<HTMLButtonElement>('[data-kblang]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.kblang === kbLang);
+    });
 
   const fpsCap = settings.fpsCap === 30 ? '30' : '0';
   document.querySelectorAll<HTMLButtonElement>('[data-fpscap]').forEach((btn) => {
@@ -625,8 +631,8 @@ async function bootstrap(): Promise<void> {
     }
 
     const target = (e.target as HTMLElement).closest<HTMLElement>(
-      '[data-action], [data-breed], [data-rendermode], [data-collar], [data-headphonemode], [data-kblayout], [data-kborient], [data-tailmode], [data-fpscap], [data-livechroma]',
-    );
+          '[data-action], [data-breed], [data-rendermode], [data-collar], [data-headphonemode], [data-kblayout], [data-kborient], [data-kblang], [data-tailmode], [data-fpscap], [data-livechroma]',
+        );
     if (!target) return;
 
     void initReadyPromise.then(() => {
@@ -673,12 +679,18 @@ async function bootstrap(): Promise<void> {
       }
 
       const kbOrientAttr = target.dataset.kborient;
-      if (kbOrientAttr === 'cat' || kbOrientAttr === 'viewer') {
-        void applySettingsPatch({ keyboardOrientation: kbOrientAttr });
-        return;
-      }
+            if (kbOrientAttr === 'cat' || kbOrientAttr === 'viewer') {
+              void applySettingsPatch({ keyboardOrientation: kbOrientAttr });
+              return;
+            }
 
-      const tailModeAttr = target.dataset.tailmode;
+            const kbLangAttr = target.dataset.kblang;
+            if (kbLangAttr === 'en' || kbLangAttr === 'th') {
+              void applySettingsPatch({ keyboardLang: kbLangAttr });
+              return;
+            }
+
+            const tailModeAttr = target.dataset.tailmode;
       if (
         tailModeAttr === 'smart' ||
         tailModeAttr === 'custom' ||

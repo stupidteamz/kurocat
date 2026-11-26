@@ -111,7 +111,9 @@
     "check_update": "检查更新 v{ver}",
     "update_ready": "升级 v{ver}",
     "checking_short": "检测中...",
-    "quit": "退出"
+    "quit": "退出",
+    "kb_lang_en": "English",
+    "kb_lang_th": "ไทย"
   },
   "breeds": {
     "black": "经典小黑猫",

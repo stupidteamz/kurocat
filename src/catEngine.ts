@@ -5,6 +5,8 @@ import {
   type KeySpec,
   type KeyboardLayoutId,
   formatBubbleForVk,
+  type KeyboardLang,
+  getKeyLabel,
   resolveKeyByVk,
 } from './keyboardLayout';
 import { catAudio } from './audio';
@@ -254,8 +256,9 @@ export class KuroCatEngine {
   public catBreed: CatBreed = 'black';
   public customSkin: ResolvedSkin | null = null;
   public keyboardLayout: KeyboardLayoutId = '65';
-  public keyboardOrientation: KeyboardOrientation = 'cat';
-  public tailKeyMode: TailKeyMode = 'smart';
+    public keyboardOrientation: KeyboardOrientation = 'cat';
+    public keyboardLang: KeyboardLang = 'en';
+    public tailKeyMode: TailKeyMode = 'smart';
   private tailKeyIdSet = new Set<string>(DEFAULT_TAIL_KEY_IDS);
   private tailPickerActive = false;
   private tailPickerSelection: ReadonlySet<string> | null = null;
@@ -629,12 +632,13 @@ export class KuroCatEngine {
     }
   }
 
-  public setKeyboardConfig(layout: KeyboardLayoutId, orientation: KeyboardOrientation): void {
-    const nextLayout: KeyboardLayoutId = layout === '108' ? '108' : '65';
-    const nextOrientation: KeyboardOrientation = orientation === 'viewer' ? 'viewer' : 'cat';
-    const layoutChanged = this.keyboardLayout !== nextLayout;
-    this.keyboardLayout = nextLayout;
-    this.keyboardOrientation = nextOrientation;
+  public setKeyboardConfig(layout: KeyboardLayoutId, orientation: KeyboardOrientation, keyboardLang: KeyboardLang = 'en'): void {
+      this.keyboardLang = keyboardLang;
+      const nextLayout: KeyboardLayoutId = layout === '108' ? '108' : '65';
+      const nextOrientation: KeyboardOrientation = orientation === 'viewer' ? 'viewer' : 'cat';
+      const layoutChanged = this.keyboardLayout !== nextLayout;
+      this.keyboardLayout = nextLayout;
+      this.keyboardOrientation = nextOrientation;
 
     this.syncLayoutPositions();
 
@@ -1387,11 +1391,11 @@ export class KuroCatEngine {
       const pt = dafeiyuUseTail ? this.getTailTargetPoint(spec) : rawKeyPt;
       this.dafeiyu.onKeyDown(vk, pt, dafeiyuLayout, repeat, dafeiyuUseTail);
       if (this.showKeyBubbles) {
-        const label = formatBubbleForVk(vk, spec);
-        if (label) {
-          this.spawnBubble(label, spec.id === 'space', pt.x, now);
-        }
-      }
+              const label = formatBubbleForVk(vk, spec, this.keyboardLang);
+              if (label) {
+                this.spawnBubble(label, spec.id === 'space', pt.x, now);
+              }
+            }
       return;
     }
 
@@ -1443,11 +1447,11 @@ export class KuroCatEngine {
       }
 
       if (this.showKeyBubbles) {
-        const label = formatBubbleForVk(vk, spec);
-        if (label) {
-          this.spawnBubble(label, spec.id === 'space', clampedTailPt.x, now);
-        }
-      }
+              const label = formatBubbleForVk(vk, spec, this.keyboardLang);
+              if (label) {
+                this.spawnBubble(label, spec.id === 'space', clampedTailPt.x, now);
+              }
+            }
       return;
     }
 
@@ -1528,11 +1532,11 @@ export class KuroCatEngine {
     }
 
     if (this.showKeyBubbles) {
-      const label = formatBubbleForVk(vk, spec);
-      if (label) {
-        this.spawnBubble(label, spec.id === 'space', targetPoint.x, now);
-      }
-    }
+          const label = formatBubbleForVk(vk, spec, this.keyboardLang);
+          if (label) {
+            this.spawnBubble(label, spec.id === 'space', targetPoint.x, now);
+          }
+        }
   }
 
   public onKeyUp(vk: number): void {
@@ -3938,7 +3942,7 @@ export class KuroCatEngine {
         targetCtx.restore();
       }
 
-      const legend = key.id === 'space' ? (isTailSelected ? '␣' : '') : key.id === 'esc' ? 'Esc' : key.label;
+      const legend = key.id === 'space' ? (isTailSelected ? '␣' : '') : key.id === 'esc' ? 'Esc' : getKeyLabel(key, this.keyboardLang);
       if (legend) {
         const isWideWord = legend.length >= 3;
         const fontSize = is108

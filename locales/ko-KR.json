@@ -111,7 +111,9 @@
     "check_update": "업데이트 확인 v{ver}",
     "update_ready": "v{ver} 업데이트",
     "checking_short": "확인 중...",
-    "quit": "종료"
+    "quit": "종료",
+    "kb_lang_en": "English",
+    "kb_lang_th": "ไทย"
   },
   "breeds": {
     "black": "검은 고양이",

@@ -43,12 +43,13 @@ interface AppSettings {
   autostart: boolean;
   catBreed: string;
   mcpEnabled: boolean;
-  mcpPort: number;
-  keyboardLayout: KeyboardLayoutId;
-  keyboardOrientation: KeyboardOrientation;
-  privacyPasswordGuard: boolean;
-  tailKeyMode: TailKeyMode;
-  tailKeyIds: string[];
+    mcpPort: number;
+    keyboardLayout: KeyboardLayoutId;
+    keyboardLang?: 'en' | 'th';
+    keyboardOrientation: KeyboardOrientation;
+    privacyPasswordGuard: boolean;
+    tailKeyMode: TailKeyMode;
+    tailKeyIds: string[];
   obsEnabled?: boolean;
   obsPort?: number;
   obsHidePet?: boolean;
@@ -145,12 +146,13 @@ let settings: AppSettings = {
   autostart: false,
   catBreed: 'black',
   mcpEnabled: true,
-  mcpPort: 27420,
-  keyboardLayout: '65',
-  keyboardOrientation: 'cat',
-  privacyPasswordGuard: true,
-  tailKeyMode: 'smart',
-  tailKeyIds: [...DEFAULT_TAIL_KEY_IDS],
+    mcpPort: 27420,
+    keyboardLayout: '65',
+    keyboardLang: 'en',
+    keyboardOrientation: 'cat',
+    privacyPasswordGuard: true,
+    tailKeyMode: 'smart',
+    tailKeyIds: [...DEFAULT_TAIL_KEY_IDS],
   renderMode: '3d',
   collarColor: 'none',
   headphoneMode: 'off',
@@ -317,6 +319,7 @@ function syncEngine3DState(): void {
   if (!engine3d) return;
   const activeCat = catList.find((c) => c.id === settings.catBreed) ?? catList[0];
   const kbLayout: KeyboardLayoutId = settings.keyboardLayout === '108' ? '108' : '65';
+  const kbLang: 'en' | 'th' = settings.keyboardLang === 'th' ? 'th' : 'en';
   const kbOrient: KeyboardOrientation = settings.keyboardOrientation === 'viewer' ? 'viewer' : 'cat';
   const tailMode: TailKeyMode =
     settings.tailKeyMode === 'custom' ||
@@ -341,8 +344,8 @@ function syncEngine3DState(): void {
   engine3d.setCollar(collar);
   engine3d.setHeadphones(shouldWearHeadphonesNow());
   engine3d.setGameActive(gameActive);
-  engine3d.setKeyboardConfig(kbLayout, kbOrient);
-  engine3d.setTailKeyConfig(tailMode, tailIds);
+    engine3d.setKeyboardConfig(kbLayout, kbOrient, kbLang);
+    engine3d.setTailKeyConfig(tailMode, tailIds);
   engine3d.setPrivacyMode(privacyActive);
   engine3d.setFpsCap(settings.fpsCap === 30 ? 30 : 0);
   engine3d.resize();
@@ -488,8 +491,9 @@ function syncMenuUI(): void {
   }
 
   const kbLayout: KeyboardLayoutId = settings.keyboardLayout === '108' ? '108' : '65';
-  const kbOrient: KeyboardOrientation = settings.keyboardOrientation === 'viewer' ? 'viewer' : 'cat';
-  const tailMode: TailKeyMode =
+    const kbLang: 'en' | 'th' = settings.keyboardLang === 'th' ? 'th' : 'en';
+    const kbOrient: KeyboardOrientation = settings.keyboardOrientation === 'viewer' ? 'viewer' : 'cat';
+    const tailMode: TailKeyMode =
     settings.tailKeyMode === 'custom' ||
     settings.tailKeyMode === 'edge' ||
     settings.tailKeyMode === 'off'
@@ -501,9 +505,12 @@ function syncMenuUI(): void {
     btn.classList.toggle('active', btn.dataset.kblayout === kbLayout);
   });
   document.querySelectorAll<HTMLButtonElement>('[data-kborient]').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.kborient === kbOrient);
-  });
-  document.querySelectorAll<HTMLButtonElement>('[data-tailmode]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.kborient === kbOrient);
+    });
+    document.querySelectorAll<HTMLButtonElement>('[data-kblang]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.kblang === kbLang);
+    });
+    document.querySelectorAll<HTMLButtonElement>('[data-tailmode]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.tailmode === tailMode);
   });
   const fpsCapStr = settings.fpsCap === 30 ? '30' : '0';
@@ -572,9 +579,9 @@ function syncMenuUI(): void {
   const fpsCapNum = settings.fpsCap === 30 ? 30 : 0;
   engine.showKeyBubbles = settings.showKeyBubbles;
   engine.setCatAppearance(activeCat?.id || 'black', activeCat);
-  engine.setHeadphones(shouldWearHeadphonesNow());
-  engine.setKeyboardConfig(kbLayout, kbOrient);
-  engine.setTailKeyConfig(tailMode, tailIds);
+    engine.setHeadphones(shouldWearHeadphonesNow());
+    engine.setKeyboardConfig(kbLayout, kbOrient, kbLang);
+    engine.setTailKeyConfig(tailMode, tailIds);
   engine.setFpsCap(fpsCapNum);
   engine3d?.setFpsCap(fpsCapNum);
   if (!sliderDragging) {
@@ -1427,9 +1434,9 @@ async function bootstrap(): Promise<void> {
   });
 
   menuEl.addEventListener('click', (e) => {
-    const target = (e.target as HTMLElement).closest<HTMLElement>(
-      '[data-action], [data-scale], [data-breed], [data-rendermode], [data-collar], [data-headphonemode], [data-kblayout], [data-kborient], [data-tailmode], [data-fpscap], [data-lang]',
-    );
+      const target = (e.target as HTMLElement).closest<HTMLElement>(
+        '[data-action], [data-scale], [data-breed], [data-rendermode], [data-collar], [data-headphonemode], [data-kblayout], [data-kborient], [data-kblang], [data-tailmode], [data-fpscap], [data-lang]',
+      );
     if (!target) return;
 
     const fpsAttr = target.dataset.fpscap;
@@ -1476,13 +1483,19 @@ async function bootstrap(): Promise<void> {
     }
 
     const kbOrientAttr = target.dataset.kborient;
-    if (kbOrientAttr === 'cat' || kbOrientAttr === 'viewer') {
-      void applySettingsPatch({ keyboardOrientation: kbOrientAttr });
-      closeContextMenu();
-      return;
-    }
+        if (kbOrientAttr === 'cat' || kbOrientAttr === 'viewer') {
+          void applySettingsPatch({ keyboardOrientation: kbOrientAttr });
+          closeContextMenu();
+          return;
+        }
 
-    const tailModeAttr = target.dataset.tailmode;
+        const kbLangAttr = target.dataset.kblang;
+        if (kbLangAttr === 'en' || kbLangAttr === 'th') {
+          void applySettingsPatch({ keyboardLang: kbLangAttr });
+          return;
+        }
+
+        const tailModeAttr = target.dataset.tailmode;
     if (
       tailModeAttr === 'smart' ||
       tailModeAttr === 'custom' ||

@@ -5,7 +5,7 @@ import {
   type CatEarShape,
   type CatSkinConfig,
 } from './catSkins';
-import type { KeyboardLayoutId } from './keyboardLayout';
+import type { KeyboardLayoutId, KeyboardLang } from './keyboardLayout';
 import type { CatHitZone, KeyboardOrientation, PeekEdge, TailKeyMode } from './catEngine';
 import { DEFAULT_TAIL_KEY_IDS } from './catEngine';
 import { catAudio } from './audio';
@@ -599,7 +599,8 @@ export class KuroCatEngine3D {
   private readonly scene = new THREE.Scene();
   private readonly camera: THREE.PerspectiveCamera;
   private readonly desk: KeyboardAndMouse3D;
-  private readonly furSystem = new FurShaderSystem();
+    private keyboardLang: KeyboardLang = 'en';
+    private readonly furSystem = new FurShaderSystem();
 
   private readonly catRoot = new THREE.Group();
   private readonly homePos = new THREE.Vector3(0.02, 0, -0.02);
@@ -2476,13 +2477,14 @@ export class KuroCatEngine3D {
     }
   }
 
-  public setKeyboardConfig(layout: KeyboardLayoutId, orient: KeyboardOrientation): void {
-    this.desk.rebuildBoard(layout, orient);
-    this.syncDeskFloorShadows();
-    this.paws.L.keyId = null;
-    this.paws.R.keyId = null;
-    this.tailTap.keyId = null;
-  }
+  public setKeyboardConfig(layout: KeyboardLayoutId, orient: KeyboardOrientation, keyboardLang: KeyboardLang = 'en'): void {
+      this.keyboardLang = keyboardLang;
+      this.desk.rebuildBoard(layout, orient, this.keyboardLang);
+      this.syncDeskFloorShadows();
+      this.paws.L.keyId = null;
+      this.paws.R.keyId = null;
+      this.tailTap.keyId = null;
+    }
 
   public setChromaKeyBg(hex: string | null): void {
     const normalized = typeof hex === 'string' && hex.trim() ? hex.trim() : null;

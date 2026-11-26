@@ -111,7 +111,9 @@
     "check_update": "更新を確認 v{ver}",
     "update_ready": "v{ver} に更新",
     "checking_short": "確認中...",
-    "quit": "終了"
+    "quit": "終了",
+    "kb_lang_en": "English",
+    "kb_lang_th": "ไทย"
   },
   "breeds": {
     "black": "黒猫",

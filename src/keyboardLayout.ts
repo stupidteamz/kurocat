@@ -1,6 +1,9 @@
 export type KeyboardLayoutId = '65' | '108';
+export type KeyboardLang = 'en' | 'th';
 
 export interface KeySpec {
+  labelTh?: string;
+  bubbleTh?: string;
   id: string;
   label: string;
   bubble: string;
@@ -269,8 +272,8 @@ export function resolveKeyByVk(vk: number, layoutId: KeyboardLayoutId = '65'): K
   return null;
 }
 
-export function formatBubbleForVk(vk: number, fallbackSpec: KeySpec | null): string {
-  if (fallbackSpec?.bubble) return fallbackSpec.bubble;
+export function formatBubbleForVk(vk: number, fallbackSpec: KeySpec | null, lang: KeyboardLang = 'en'): string {
+  if (fallbackSpec?.bubble) return getKeyBubble(fallbackSpec, lang);
   if (vk >= 0x70 && vk <= 0x7b) {
     return `F${vk - 0x6f}`;
   }
@@ -282,4 +285,14 @@ export function formatBubbleForVk(vk: number, fallbackSpec: KeySpec | null): str
   if (vk === 0x21) return 'PgUp';
   if (vk === 0x22) return 'PgDn';
   return '';
+}
+
+export function getKeyLabel(spec: KeySpec, lang: KeyboardLang = 'en'): string {
+  if (lang === 'th' && spec.labelTh) return spec.labelTh;
+  return spec.label;
+}
+
+export function getKeyBubble(spec: KeySpec, lang: KeyboardLang = 'en'): string {
+  if (lang === 'th' && spec.bubbleTh) return spec.bubbleTh;
+  return spec.bubble;
 }
