@@ -8,15 +8,15 @@
 </p>
 
 <p align="center">
-  <a href="https://kurocat.org/?lang=ko"><img src="https://img.shields.io/badge/Website-kurocat.org-d4f044?style=flat-square&logo=googlechrome&logoColor=111" alt="KuroCat Official Website" /></a>
+  <a href="https://qianyi.one/kurocat/?lang=ko"><img src="https://img.shields.io/badge/Website-qianyi.one%2Fkurocat-d4f044?style=flat-square&logo=googlechrome&logoColor=111" alt="KuroCat Official Website" /></a>
   <a href="https://github.com/qianyiai/kurocat/releases/latest"><img src="https://img.shields.io/github/v/release/qianyiai/kurocat?style=flat-square&color=38bdf8" alt="Latest Release" /></a>
   <a href="https://github.com/qianyiai/kurocat/blob/main/LICENSE"><img src="https://img.shields.io/github/license/qianyiai/kurocat?style=flat-square&color=22c55e" alt="MIT License" /></a>
   <img src="https://img.shields.io/badge/Platform-Win11%2F10%2F7%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-818cf8?style=flat-square" alt="Cross Platform" />
 </p>
 
-> 🔒 **공식 배포 채널 안내**: [GitHub 저장소](https://github.com/qianyiai/kurocat) · [공식 웹사이트 (kurocat.org)](https://kurocat.org/?lang=ko) · [공식 Homebrew Tap](https://github.com/qianyiai/homebrew-tap) *(외부 미러 도메인은 비공식이므로 반드시 공식 채널에서 다운로드하세요.)*
+> 🔒 **공식 배포 채널 안내**: [GitHub 저장소](https://github.com/qianyiai/kurocat) · [공식 웹사이트 (qianyi.one/kurocat)](https://qianyi.one/kurocat/?lang=ko) · [공식 Homebrew Tap](https://github.com/qianyiai/homebrew-tap) *(외부 미러 도메인은 비공식이므로 반드시 공식 채널에서 다운로드하세요.)*
 
-> 🌐 **공식 웹사이트 · 브라우저 실시간 체험판 · 고속 다운로드**: [**https://kurocat.org/**](https://kurocat.org/) ([한국어 UI](https://kurocat.org/?lang=ko))
+> 🌐 **공식 웹사이트 · 브라우저 실시간 체험판 · 고속 다운로드**: [**https://qianyi.one/kurocat/**](https://qianyi.one/kurocat/) ([한국어 UI](https://qianyi.one/kurocat/?lang=ko))
 
 **Windows(Win11/10 & Win7 SP1) · macOS(10.15+ Apple Silicon & Intel) · Linux(Ubuntu / Debian / KylinOS / UOS) · Android**를 지원하는 초경량 투명 최상단 바탕화면 타이핑·마우스 펫입니다. **Tauri v2(Rust 네이티브 전역 입력 훅 + 내장 MCP 서버 + Three.js 3D / HTML5 Canvas 2D 듀얼 엔진)** 기반으로 제작되어 외부 런타임 의존성 없이 약 24 MB 메모리로 가볍게 동작합니다. 기본 **✨ 3D 피규어 모드**와 **🎨 2D 클래식 드로잉**을 원클릭으로 전환할 수 있으며, **손그림 고양이 스킨 6종 + 🐳 고래소녀(BigFish)**(검은 고양이, 랙돌, 치즈 태비, 삼색이, 턱시도, 샴 고양이, 고래소녀), **선택형 3D 목걸이 방울 및 게임 자동 착용 게이밍 헤드셋(기본 꺼짐)**, **비밀번호 입력 시 자동 눈 가리기**, **4가지 커스텀 꼬리 타건 모드**, **OBS 네이티브 투명 브라우저 소스**, 그리고 반려묘 사진 한 장으로 AI가 0.4초 만에 나만의 펫을 만들어 주는 **내장 MCP 서버**를 모두 지원합니다.
 
@@ -25,27 +25,27 @@
 <table>
   <tr>
     <td align="center" width="52%" valign="top">
-      <a href="https://kurocat.org/?lang=ko#playground" target="_blank" rel="noopener">
+      <a href="https://qianyi.one/kurocat/?lang=ko#playground" target="_blank" rel="noopener">
         <img src="docs/wake-pet-demo-ko.webp" alt="KuroCat 3D 검은 고양이 데모 (낮잠 → 타자 소리에 잠깨서 화남 → 머리 쓰다듬기 골골송으로 기분 풀림)" width="380" />
       </a>
       <br/>
-      <strong>🐈‍⬛ <a href="https://kurocat.org/?lang=ko#playground">공식 웹사이트에서 3D 실시간 체험하기 (직접 타이핑 &amp; 쓰다듬기) →</a></strong>
+      <strong>🐈‍⬛ <a href="https://qianyi.one/kurocat/?lang=ko#playground">공식 웹사이트에서 3D 실시간 체험하기 (직접 타이핑 &amp; 쓰다듬기) →</a></strong>
       <br/>
       <sub>
         낮잠 → 타자 소리에 잠깸 화남 → 쓰다듬기 골골송으로 기분 풀림 · 고양이 6종 + 3D/2D 전환<br/>
-        📥 <a href="https://kurocat.org/media/wake-pet-9s-ko.mp4">골골송 사운드 포함 9초 MP4 보기/다운로드</a>
+        📥 <a href="https://qianyi.one/kurocat/media/wake-pet-9s-ko.mp4">골골송 사운드 포함 9초 MP4 보기/다운로드</a>
       </sub>
     </td>
     <td align="center" width="48%" valign="top">
-      <a href="https://kurocat.org/?lang=ko#whale-demo" target="_blank" rel="noopener">
+      <a href="https://qianyi.one/kurocat/?lang=ko#whale-demo" target="_blank" rel="noopener">
         <img src="docs/whale-demo-ko.webp" alt="KuroCat 🐳 고래소녀(BigFish) 14초 세로 데모 영상" width="272" />
       </a>
       <br/>
-      <strong>🐳 <a href="https://kurocat.org/?lang=ko#whale-demo">1080×1920 60fps 사운드 포함 데모 영상 보기 →</a></strong>
+      <strong>🐳 <a href="https://qianyi.one/kurocat/?lang=ko#whale-demo">1080×1920 60fps 사운드 포함 데모 영상 보기 →</a></strong>
       <br/>
       <sub>
         마우스 + 타이핑 + 고래꼬리 타건 3부위 동시 동작 → 고속 타건 시 발그레 &amp; 환한 웃음 → 비밀번호 두 손 눈 가리기<br/>
-        📥 <a href="https://kurocat.org/media/whale-douyin-14s-ko.mp4">고속 MP4 미러 다운로드</a> · <a href="https://github.com/qianyiai/kurocat/releases/download/v4.7.0/KuroCat-whale-demo-14s.mp4">GitHub 원본</a>
+        📥 <a href="https://qianyi.one/kurocat/media/whale-douyin-14s-ko.mp4">고속 MP4 미러 다운로드</a> · <a href="https://github.com/qianyiai/kurocat/releases/download/v4.7.0/KuroCat-whale-demo-14s.mp4">GitHub 원본</a>
       </sub>
     </td>
   </tr>
@@ -55,7 +55,7 @@
 
 [Releases](https://github.com/qianyiai/kurocat/releases) 페이지 또는 아래 최신 **`v5.1.2`** 설치 파일로 바로 시작하세요. (**🤖 AI 코딩 컴패니언 실시간 상태 연동 — Doubao Work / WorkBuddy / DeepSeek Harness / Codex / Qwen / Antigravity / Claude Code 원클릭 연동으로 코딩 중 자동 대타 타이핑 + 승인 대기/오류/완료 알림 말풍선**, **MCP 2D/3D 얼굴·귀 형태 자유 조각(도구 10종 + 반점 16개)**, **2D/3D 전환 및 WebGL 자가 복구 + 사이드 메뉴 첫 클릭 즉각 반응**, **중복 실행 방지 · Win11 업데이트 잠금 수정 · macOS 절전 복귀/드래그 및 Linux 스케일 수정**, **✨ 3D / 🎨 2D 듀얼 엔진**, **5개 언어 다국어 UI**, **OBS 투명 방송 소스**, **비밀번호 눈 가리기** 모두 탑재):
 
-- **🪟 Windows 10 / 11 (65% 클래식 설치판 · `v5.1.2`)**: [**`KuroCat-5.1.2-x64-setup.exe`**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-5.1.2-x64-setup.exe) (2.15 MB) | [**고속 미러 다운로드**](https://kurocat.org/?lang=ko#download)
+- **🪟 Windows 10 / 11 (65% 클래식 설치판 · `v5.1.2`)**: [**`KuroCat-5.1.2-x64-setup.exe`**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-5.1.2-x64-setup.exe) (2.15 MB) | [**고속 미러 다운로드**](https://qianyi.one/kurocat/?lang=ko#download)
   - 기본 65% 콤팩트 기계식 키보드로 시작하며 바탕화면 **`KuroCat`** 아이콘, 시작 메뉴 및 제거 항목을 자동 생성합니다. 우클릭 또는 시스템 트레이에서 **108 풀배열**, **🐳 고래소녀**, **OBS 투명 소스**, **업데이트 확인**으로 언제든 전환할 수 있습니다.
   - **자주 묻는 질문 (FAQ)**:
     - **Edge / Chrome에서 "일반적으로 다운로드되지 않음" 또는 Windows SmartScreen 경고가 뜨나요?** (상용 EV 코드 서명이 없는 100% 공개 오픈소스 소프트웨어입니다):
@@ -64,9 +64,9 @@
       - **SmartScreen 파란 경고창**: **추가 정보** → **실행** 클릭.
     - 구형 Win10 / LTSC 환경에서 `WebView2 Runtime` 누락 안내가 뜨면 Microsoft 공식 1.8 MB 설치 도구를 관리자 권한으로 실행하세요: [`MicrosoftEdgeWebview2Setup.exe`](https://go.microsoft.com/fwlink/p/?LinkId=2124703).
     - **전체화면 게임 / 관리자 권한 / OBS 방송**: 테두리 없는 창 및 FSO 게임에서 포커스를 빼앗지 않는 최상단 가드를 내장했습니다(**클릭 통과 잠금** 켜기 + `Alt` 키로 언제든 임시 이동/잠금 해제 권장). 관리자 권한으로 실행되는 게임은 트레이에서 **관리자 권한으로 다시 시작**을 선택하세요. OBS 방송은 우클릭 → **OBS 소스 주소 복사**(`http://127.0.0.1:27421/obs`, 크로마키 불필요, **OBS 전용 표시** 및 비밀번호 눈 가리기 연동)를 사용하세요. 커널 안티치트 게임(발로란트 등)은 트레이에서 **입력 감지 일시정지 및 숨기기 (안티치트 보호)**를 켜는 것을 권장합니다.
-- **🖥️ Windows 7 SP1 (64비트 전용 포터블 · `v5.1.2`)**: [**`KuroCat-v5.1.2-win7-x64-portable.zip`**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-v5.1.2-win7-x64-portable.zip) (178.94 MB) | [**고속 미러 다운로드**](https://kurocat.org/releases/v5.1.2/KuroCat-v5.1.2-win7-x64-portable.zip)
+- **🖥️ Windows 7 SP1 (64비트 전용 포터블 · `v5.1.2`)**: [**`KuroCat-v5.1.2-win7-x64-portable.zip`**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-v5.1.2-win7-x64-portable.zip) (178.94 MB) | [**고속 미러 다운로드**](https://qianyi.one/kurocat/releases/v5.1.2/KuroCat-v5.1.2-win7-x64-portable.zip)
   - 네이티브 PE 6.01 빌드(Win8/Win10 DLL 의존성 0)로 Microsoft 마지막 Win7 오프라인 **WebView2 109.0.1518.78** 런타임을 내장하고, Aero 사용 여부와 무관하게 흰 테두리나 계단 현상 없는 **256단계 픽셀 투명(`UpdateLayeredWindow`)** 렌더링을 지원합니다. 압축을 모두 풀고 `KuroCat.exe`와 `WebView2Runtime`을 같은 폴더에 둔 채 실행하세요.
-- **🍎 macOS 10.15 Catalina+ (Apple Silicon M1–M4 & Intel 유니버설 · `v5.1.2`)**: [**`KuroCat-v5.1.2-macos-universal.dmg`**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-v5.1.2-macos-universal.dmg) (5.93 MB) | [**고속 미러 다운로드**](https://kurocat.org/releases/v5.1.2/KuroCat-v5.1.2-macos-universal.dmg)
+- **🍎 macOS 10.15 Catalina+ (Apple Silicon M1–M4 & Intel 유니버설 · `v5.1.2`)**: [**`KuroCat-v5.1.2-macos-universal.dmg`**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-v5.1.2-macos-universal.dmg) (5.93 MB) | [**고속 미러 다운로드**](https://qianyi.one/kurocat/releases/v5.1.2/KuroCat-v5.1.2-macos-universal.dmg)
   - **🍺 Homebrew 한 줄 설치 (추천)**: `brew install --cask qianyiai/tap/kurocat` (`brew upgrade --cask kurocat` 업그레이드 지원 및 macOS 격리 속성 자동 해제).
   - `.dmg`를 열어 `KuroCat.app`을 **응용 프로그램** 폴더로 드래그해 실행하세요. 3D/2D 전환, 65%/108키 배열, 7종 스킨이 모두 포함됩니다.
   - **첫 실행 안내 (미공증 오픈소스 앱)**: "개발자를 확인할 수 없음" 또는 "손상됨" 알림이 표시되면 터미널에서 한 번만 `xattr -cr /Applications/KuroCat.app`을 실행하세요(이후 앱 내 자동 업데이트 시 자동 처리됩니다).
@@ -76,7 +76,7 @@
   - **x86_64**: [**`.deb` (2.38 MB)**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-v5.1.2-linux-amd64.deb) · [**`.AppImage` (77.52 MB)**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-v5.1.2-linux-amd64.AppImage)
   - **ARM64**: [**`.deb` (2.34 MB)**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-v5.1.2-linux-arm64.deb) · [**`.AppImage` (75.69 MB)**](https://github.com/qianyiai/kurocat/releases/download/v5.1.2/KuroCat-v5.1.2-linux-arm64.AppImage)
   - **시스템 요구사항**: Tauri v2 / Ubuntu 22.04 기반으로 빌드되어 **`glibc >= 2.34`**가 필요합니다(`.deb` 패키지는 **`libwebkit2gtk-4.1-0`** 및 **`libayatana-appindicator3-1`** 필요; Ubuntu 20.04 / `glibc 2.31` 기반 KylinOS V10 SP1은 미지원).
-  - 루트 권한 없이 X11 `XRecord` 전역 입력을 동적 로드하며(Wayland에서는 `evdev` 자동 폴백), 고속 미러는 [`https://kurocat.org/?lang=ko#linux-download`](https://kurocat.org/?lang=ko#linux-download)에서 받을 수 있습니다.
+  - 루트 권한 없이 X11 `XRecord` 전역 입력을 동적 로드하며(Wayland에서는 `evdev` 자동 폴백), 고속 미러는 [`https://qianyi.one/kurocat/?lang=ko#linux-download`](https://qianyi.one/kurocat/?lang=ko#linux-download)에서 받을 수 있습니다.
 - **🤖 Android**: 최신 Android 플로팅 펫 APK 및 전체 플랫폼 패키지는 [GitHub Releases](https://github.com/qianyiai/kurocat/releases)에서 확인할 수 있습니다.
 
 ## ✨ 핵심 기능
@@ -175,15 +175,15 @@ npm run tauri:build    # 릴리스 바이너리 및 설치 파일 빌드
 
 ## 📈 실시간 성장 그래프
 
-<a href="https://kurocat.org/?lang=ko#growth">
+<a href="https://qianyi.one/kurocat/?lang=ko#growth">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://kurocat.org/api/growth-chart?theme=dark&amp;lang=en" />
-    <source media="(prefers-color-scheme: light)" srcset="https://kurocat.org/api/growth-chart?theme=light&amp;lang=en" />
-    <img alt="KuroCat 실시간 다운로드 및 GitHub Stars 성장 그래프" src="https://kurocat.org/api/growth-chart?theme=dark&amp;lang=en" width="100%" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://qianyi.one/kurocat/api/growth-chart?theme=dark&amp;lang=en" />
+    <source media="(prefers-color-scheme: light)" srcset="https://qianyi.one/kurocat/api/growth-chart?theme=light&amp;lang=en" />
+    <img alt="KuroCat 실시간 다운로드 및 GitHub Stars 성장 그래프" src="https://qianyi.one/kurocat/api/growth-chart?theme=dark&amp;lang=en" width="100%" />
   </picture>
 </a>
 
-> 📡 전체 채널 누적 다운로드 수와 GitHub Stars를 실시간으로 동기화합니다(GitHub 다크/라이트 테마 자동 대응). [공식 웹사이트에서 인터랙티브 그래프 보기 →](https://kurocat.org/?lang=ko#growth)
+> 📡 전체 채널 누적 다운로드 수와 GitHub Stars를 실시간으로 동기화합니다(GitHub 다크/라이트 테마 자동 대응). [공식 웹사이트에서 인터랙티브 그래프 보기 →](https://qianyi.one/kurocat/?lang=ko#growth)
 
 ## ☕ 후원 및 응원
 
