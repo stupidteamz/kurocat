@@ -30,20 +30,20 @@ let activeReleaseAssets: ReleaseAssetMap | null = null;
 
 const WHALE_DEMO_MEDIA: Record<Locale, { video: string; poster: string }> = {
   zh: {
-    video: '/media/whale-douyin-14s.mp4',
-    poster: '/assets/whale-douyin-poster.webp',
+    video: '/kurocat/media/whale-douyin-14s.mp4',
+    poster: '/kurocat/assets/whale-douyin-poster.webp',
   },
   en: {
-    video: '/media/whale-douyin-14s-en.mp4',
-    poster: '/assets/whale-douyin-poster-en.webp',
+    video: '/kurocat/media/whale-douyin-14s-en.mp4',
+    poster: '/kurocat/assets/whale-douyin-poster-en.webp',
   },
   ja: {
-    video: '/media/whale-douyin-14s-ja.mp4',
-    poster: '/assets/whale-douyin-poster-ja.webp',
+    video: '/kurocat/media/whale-douyin-14s-ja.mp4',
+    poster: '/kurocat/assets/whale-douyin-poster-ja.webp',
   },
   ko: {
-    video: '/media/whale-douyin-14s-ko.mp4',
-    poster: '/assets/whale-douyin-poster-ko.webp',
+    video: '/kurocat/media/whale-douyin-14s-ko.mp4',
+    poster: '/kurocat/assets/whale-douyin-poster-ko.webp',
   },
 };
 
@@ -83,10 +83,10 @@ interface ReleaseAssetMap {
 }
 
 function buildDefaultAssets(): ReleaseAssetMap {
-  const localBase = `/releases/${LOCAL_MIRROR_VERSION}`;
-  const ghBase = `https://github.com/qianyiai/releases/download/${LOCAL_MIRROR_VERSION}`;
-  const macLocalBase = `/releases/${MACOS_MIRROR_VERSION}`;
-  const macGhBase = `https://github.com/qianyiai/releases/download/${MACOS_MIRROR_VERSION}`;
+  const localBase = `/kurocat/releases/${LOCAL_MIRROR_VERSION}`;
+  const ghBase = `https://github.com/qianyiai/kurocat/releases/download/${LOCAL_MIRROR_VERSION}`;
+  const macLocalBase = `/kurocat/releases/${MACOS_MIRROR_VERSION}`;
+  const macGhBase = `https://github.com/qianyiai/kurocat/releases/download/${MACOS_MIRROR_VERSION}`;
   const n65 = `KuroCat-${LOCAL_MIRROR_VER_NUM}-x64-setup.exe`;
   const nMac = `KuroCat-${MACOS_MIRROR_VERSION}-macos-universal.dmg`;
   return {
@@ -153,7 +153,7 @@ function formatCount(n: number): string {
 }
 
 function refreshLiveDownloadStats(): void {
-  void fetch('/api/stats', { cache: 'no-cache' })
+  void fetch('/kurocat/api/stats', { cache: 'no-cache' })
     .then((r) => (r.ok ? (r.json() as Promise<LiveStatsPayload>) : null))
     .then((data) => {
       if (!data) return;
@@ -208,9 +208,9 @@ function initDownloadTracking(): void {
       const body = JSON.stringify({ filename, version });
       try {
         if (navigator.sendBeacon) {
-          navigator.sendBeacon('/api/track-outbound', new Blob([body], { type: 'application/json' }));
+          navigator.sendBeacon('/kurocat/api/track-outbound', new Blob([body], { type: 'application/json' }));
         } else {
-          void fetch('/api/track-outbound', {
+          void fetch('/kurocat/api/track-outbound', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body,
@@ -230,7 +230,7 @@ async function syncGithubMetadata(): Promise<void> {
   try {
     const [repoRes, relRes] = await Promise.all([
       fetch('https://api.github.com/repos/qianyiai/kurocat', { signal: controller.signal }),
-      fetch('https://api.github.com/repos/qianyiai/releases/latest', { signal: controller.signal }),
+      fetch('https://api.github.com/repos/qianyiai/kurocat/releases/latest', { signal: controller.signal }),
     ]);
 
     if (repoRes.ok) {
@@ -1500,7 +1500,7 @@ function initGrowthChart(): void {
 
   const refresh = async () => {
     try {
-      const res = await fetch('/api/growth', { cache: 'no-store' });
+      const res = await fetch('/kurocat/api/growth', { cache: 'no-store' });
       if (!res.ok) return;
       const data = (await res.json()) as GrowthSeries;
       if (data && Array.isArray(data.points) && data.points.length > 0) {
