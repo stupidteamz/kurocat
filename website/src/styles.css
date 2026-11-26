@@ -183,9 +183,6 @@ code {
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
   font-family: inherit;
   font-size: 11px;
   font-weight: 500;
@@ -1296,6 +1293,9 @@ main {
 #download,
 #mcp,
 #growth,
+#donate {
+  scroll-margin-top: 78px;
+}
 
 .whale-demo-card {
   border-color: rgba(92, 200, 255, 0.22);
@@ -2014,6 +2014,83 @@ footer {
   }
 }
 
+/* Support / Donate Card */
+.donate-card {
+  padding: 32px 40px;
+}
+
+.donate-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.donate-info {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.donate-title {
+  margin: 4px 0 8px;
+  font-size: clamp(20px, 2.6vw, 26px);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.donate-sub {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.donate-chains {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.donate-chain-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 980px;
+  padding: 4px 11px;
+}
+
+.donate-addr-box {
+  flex: 1 1 400px;
+  min-width: 0;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.donate-addr-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: 0.01em;
+}
+
+.donate-addr-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface-elevated);
+  border: 1px solid rgba(212, 240, 68, 0.28);
+  border-radius: 14px;
+  padding: 12px 14px;
+  min-width: 0;
+}
 
 .donate-addr-pill code {
   background: transparent;

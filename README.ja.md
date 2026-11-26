@@ -3,7 +3,8 @@
 <p align="center">
   <a href="./README.md">🇨🇳 简体中文</a> &nbsp;|&nbsp;
   <a href="./README.en.md">🇺🇸 English</a> &nbsp;|&nbsp;
-  <strong>🇯🇵 日本語</strong>
+  <strong>🇯🇵 日本語</strong> &nbsp;|&nbsp;
+  <a href="./README.ko.md">🇰🇷 한국어</a>
 </p>
 
 <p align="center">
@@ -17,29 +18,32 @@
 
 **Windows（Win11/10 & Win7 SP1）/ macOS（10.15+ Apple Silicon & Intel）/ Linux（Ubuntu / Debian / KylinOS / UOS）** 対応の軽量・透過・最前面デスクトップタイピング猫コンパニオンです。**Tauri v2（Rust ネイティブグローバルフック + 内蔵 MCP サーバー + Three.js 3D / HTML5 Canvas 2D デュアルエンジン）** で構築され、外部ランタイム不要・約 24 MB の軽快動作を実現。初期設定の **✨ 3D フィギュアモード** と **🎨 2D クラシック手描き** をワンクリックで切替でき、**手描き猫スキン 6 種 + 🐳 クジラ娘（BigFish）**、**選択式 3D 首輪ベル＆ゲーム自動検出ゲーミングヘッドセット（初期設定はいずれも OFF）**、**パスワード入力時の自動目閉じ・目隠しガード**、**しっぽタイピングの 4 モード＆キー直接指定**、**OBS 透過ブラウザソース内蔵**、さらに **MCP プロトコル対応** で愛猫の写真から AI が一言で専用ペットを作成できます（3D/2D でカスタム模様 `spots[]` を 1:1 同期）。
 
-## 🎬 オンライン体験版 & クジラ娘 14 秒デモ動画
+## 🎬 3D 黒猫インタラクティブデモ & クジラ娘 14 秒動画
 
 <table>
   <tr>
-    <td align="center" width="54%" valign="top">
-      <a href="https://qianyi.one/kurocat/?lang=ja" target="_blank" rel="noopener">
-        <img src="docs/playground-demo.webp" alt="KuroCat 公式サイト ブラウザリアルタイム体験版（7 スキン・65%/108 キー・パスワード保護）" width="400" />
+    <td align="center" width="52%" valign="top">
+      <a href="https://qianyi.one/kurocat/?lang=ja#playground" target="_blank" rel="noopener">
+        <img src="docs/wake-pet-demo-ja.webp" alt="KuroCat 3D 黒猫デモ（お昼寝 → タイピングで起こされぷんぷん → なでなでゴロゴロでご機嫌回復）" width="380" />
       </a>
       <br/>
-      <strong>🎮 <a href="https://qianyi.one/kurocat/?lang=ja">公式サイトで今すぐブラウザ体験（キーボード入力＆なでなで対応）→</a></strong>
+      <strong>🐈‍⬛ <a href="https://qianyi.one/kurocat/?lang=ja#playground">公式サイトで今すぐ 3D ブラウザ体験（打鍵＆なでなで対応）→</a></strong>
       <br/>
-      <sub>3D/2D 切替 · 3D 首輪＆ヘッドセット · 360° 回転 · 猫 6 種 + 🐳 クジラ娘 · 65%/108 キー · 視点切替 · しっぽキー選択 · パスワード保護 · 20%–150% 拡大縮小</sub>
+      <sub>
+        お昼寝 → 打鍵で起こされてぷんぷん → なでなでゴロゴロ回復 · 猫 6 種 + 3D/2D 切替<br/>
+        📥 <a href="https://qianyi.one/kurocat/media/wake-pet-9s-ja.mp4">ゴロゴロ音声付き 9 秒 MP4 を再生・保存</a>
+      </sub>
     </td>
-    <td align="center" width="46%" valign="top">
+    <td align="center" width="48%" valign="top">
       <a href="https://qianyi.one/kurocat/?lang=ja#whale-demo" target="_blank" rel="noopener">
-        <img src="docs/whale-demo.webp" alt="KuroCat 🐳 クジラ娘（BigFish）14 秒デモ動画" width="272" />
+        <img src="docs/whale-demo-ja.webp" alt="KuroCat 🐳 クジラ娘（BigFish）14 秒デモ動画" width="272" />
       </a>
       <br/>
       <strong>🐳 <a href="https://qianyi.one/kurocat/?lang=ja#whale-demo">1080×1920 60fps 音声付きデモ動画を再生 →</a></strong>
       <br/>
       <sub>
         マウス + 手打ち + クジラ尾の 3 系統同時動作 → 高速打鍵で照れ＆笑顔 → パスワード目隠し<br/>
-        📥 <a href="https://qianyi.one/kurocat/media/whale-douyin-14s.mp4">MP4 高速ミラー</a> · <a href="https://github.com/qianyiai/kurocat/releases/download/v4.7.0/KuroCat-whale-demo-14s.mp4">GitHub オリジナル</a>
+        📥 <a href="https://qianyi.one/kurocat/media/whale-douyin-14s-ja.mp4">MP4 高速ミラー</a> · <a href="https://github.com/qianyiai/kurocat/releases/download/v4.7.0/KuroCat-whale-demo-14s.mp4">GitHub オリジナル</a>
       </sub>
     </td>
   </tr>

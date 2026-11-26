@@ -3,7 +3,8 @@
 <p align="center">
   <a href="./README.md">🇨🇳 简体中文</a> &nbsp;|&nbsp;
   <strong>🇺🇸 English</strong> &nbsp;|&nbsp;
-  <a href="./README.ja.md">🇯🇵 日本語</a>
+  <a href="./README.ja.md">🇯🇵 日本語</a> &nbsp;|&nbsp;
+  <a href="./README.ko.md">🇰🇷 한국어</a>
 </p>
 
 <p align="center">
@@ -17,29 +18,32 @@
 
 A lightweight, transparent, always-on-top desktop typing & mouse companion for **Windows (Win11/10 & Win7 SP1) / macOS (10.15+ Apple Silicon & Intel) / Linux (Ubuntu / Debian / KylinOS / UOS)** — built with **Tauri v2 (native Rust global hooks + built-in MCP server + Three.js 3D / HTML5 Canvas 2D dual engine)**. Zero external runtime dependencies, ~24 MB RAM footprint. Defaults to **✨ 3D Volumetric Figurine Mode** with one-click switching to **🎨 2D Classic Hand-Drawn**, and ships out of the box with **6 hand-crafted cat skins + 🐳 BigFish (whale-girl)** (Classic Black Cat, Ragdoll, Orange Tabby, Calico, Tuxedo, Siamese, and BigFish), **optional 3D collar bells & gaming headset (auto-equips in PC games, both off by default)**, **system-level password privacy guard**, **4 customizable tail-key patting modes**, **native OBS transparent Browser Source**, and a **built-in MCP server** so AI can create your own cat from a photo in one sentence (with 1:1 `spots[]` markings synced across 3D & 2D)!
 
-## 🎬 Live Web Playground & 14s BigFish Demo Video
+## 🎬 3D Black Cat Interactive Demo & 14s BigFish Demo Video
 
 <table>
   <tr>
-    <td align="center" width="54%" valign="top">
-      <a href="https://qianyi.one/kurocat/?lang=en" target="_blank" rel="noopener">
-        <img src="docs/playground-demo.webp" alt="KuroCat live interactive web playground (7 skins · 65%/108-key · password privacy guard)" width="400" />
+    <td align="center" width="52%" valign="top">
+      <a href="https://qianyi.one/kurocat/?lang=en#playground" target="_blank" rel="noopener">
+        <img src="docs/wake-pet-demo-en.webp" alt="KuroCat 3D Black Cat Demo (Napping → Woken Up Angry by Typing → Head-Pat Purr Calm Down)" width="380" />
       </a>
       <br/>
-      <strong>🎮 <a href="https://qianyi.one/kurocat/?lang=en">Try the Live Web Playground (type on your keyboard &amp; pet the cat) →</a></strong>
+      <strong>🐈‍⬛ <a href="https://qianyi.one/kurocat/?lang=en#playground">Try the Live 3D Web Playground (type &amp; pet the cat) →</a></strong>
       <br/>
-      <sub>3D &amp; 2D toggle · 3D collar &amp; headset · 360° orbit · 6 cats + 🐳 BigFish · 65%/108-key · Dual orientation · Customizable tail keys · Password guard · 20%–150% scale</sub>
+      <sub>
+        Napping → Woken up grumpy by typing → Head-pat purring calm down · 6 cats + 3D/2D toggle<br/>
+        📥 <a href="https://qianyi.one/kurocat/media/wake-pet-9s-en.mp4">Watch / Download 9s MP4 with Purr Audio</a>
+      </sub>
     </td>
-    <td align="center" width="46%" valign="top">
+    <td align="center" width="48%" valign="top">
       <a href="https://qianyi.one/kurocat/?lang=en#whale-demo" target="_blank" rel="noopener">
-        <img src="docs/whale-demo.webp" alt="KuroCat 🐳 BigFish (whale-girl) 14s vertical demo video" width="272" />
+        <img src="docs/whale-demo-en.webp" alt="KuroCat 🐳 BigFish (whale-girl) 14s vertical demo video" width="272" />
       </a>
       <br/>
       <strong>🐳 <a href="https://qianyi.one/kurocat/?lang=en#whale-demo">Watch 1080×1920 60fps Demo Video with Audio →</a></strong>
       <br/>
       <sub>
         3-limb mouse + typing + whale-tail slaps → speed-reactive blush &amp; happy laugh → hands-over-eyes password privacy<br/>
-        📥 <a href="https://qianyi.one/kurocat/media/whale-douyin-14s.mp4">Direct MP4 Mirror</a> · <a href="https://github.com/qianyiai/kurocat/releases/download/v4.7.0/KuroCat-whale-demo-14s.mp4">GitHub Original</a>
+        📥 <a href="https://qianyi.one/kurocat/media/whale-douyin-14s-en.mp4">Direct MP4 Mirror</a> · <a href="https://github.com/qianyiai/kurocat/releases/download/v4.7.0/KuroCat-whale-demo-14s.mp4">GitHub Original</a>
       </sub>
     </td>
   </tr>

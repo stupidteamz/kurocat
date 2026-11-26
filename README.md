@@ -3,7 +3,8 @@
 <p align="center">
   <strong>🇨🇳 简体中文</strong> &nbsp;|&nbsp;
   <a href="./README.en.md">🇺🇸 English</a> &nbsp;|&nbsp;
-  <a href="./README.ja.md">🇯🇵 日本語</a>
+  <a href="./README.ja.md">🇯🇵 日本語</a> &nbsp;|&nbsp;
+  <a href="./README.ko.md">🇰🇷 한국어</a>
 </p>
 
 <p align="center">
@@ -18,20 +19,23 @@
 
 轻量级 **Windows（Win11/10 & Win7 SP1）/ macOS（10.15+ Apple Silicon & Intel）/ Linux（银河麒麟 KylinOS / Ubuntu / UOS）** 透明置顶桌面打字猫咪伴侣（开箱自带 **6 款手绘猫咪皮肤 + 🐳 大肥鱼（鲸鱼娘）**：经典小黑猫、暖奶茶布偶猫、大橘猫、三花猫、奶牛猫、暹罗猫、大肥鱼，支持**输密码自动闭眼/捂眼防偷窥**，并原生内置 **MCP 协议服务端**，支持用 AI 一句话定制或新增更多你自己的猫咪！），基于 **Tauri v2（Rust 全局原生钩子 + 内置 MCP 引擎 + HTML5 Canvas 2D）** 打造。单文件轻量低耗，零外部运行时依赖。
 
-## 🎬 在线试玩预览 & 鲸鱼娘 14s 演示视频
+## 🎬 3D 小黑猫互动演示 & 鲸鱼娘 14s 演示视频
 
 <table>
   <tr>
-    <td align="center" width="54%" valign="top">
+    <td align="center" width="52%" valign="top">
       <a href="https://qianyi.one/kurocat/" target="_blank" rel="noopener">
-        <img src="docs/playground-demo.webp" alt="KuroCat 官网默认 3D 实时试玩（睡觉打盹 → 吵醒起床气狂打字 · 6 款猫咪皮肤切换）" width="400" />
+        <img src="docs/wake-pet-demo.webp" alt="KuroCat 3D 小黑猫互动演示（午睡打盹 → 打字吵醒起床气 → 摸头呼噜消气）" width="380" />
       </a>
       <br/>
-      <strong>🎮 <a href="https://qianyi.one/kurocat/">点此进入官网实时在线试玩（默认 3D · 直接敲键盘 &amp; 摸猫头）→</a></strong>
+      <strong>🐈‍⬛ <a href="https://qianyi.one/kurocat/">点此进入官网实时在线试玩（直接敲键盘 &amp; 摸猫头）→</a></strong>
       <br/>
-      <sub>默认 3D 立体手办 / 2D 经典一键切换 · 5 语言界面 · 起床气 &amp; 摸头呼噜 · 65%/108 键 · 密码防偷窥 · 20%–150% 无级缩放</sub>
+      <sub>
+        午睡打盹 → 打字吵醒起床气 → 摸头顺毛呼噜消气 · 6 款猫咪 + 3D/2D 切换<br/>
+        📥 <a href="https://qianyi.one/kurocat/media/wake-pet-9s.mp4">观看/下载 9s 含呼噜音效原版 MP4</a>
+      </sub>
     </td>
-    <td align="center" width="46%" valign="top">
+    <td align="center" width="48%" valign="top">
       <a href="https://qianyi.one/kurocat/#whale-demo" target="_blank" rel="noopener">
         <img src="docs/whale-demo.webp" alt="KuroCat 🐳 大肥鱼（鲸鱼娘）14s 演示视频（鼠标 + 打字 + 鲸尾三同动 · 加速笑开花 · 密码捂眼防偷窥）" width="272" />
       </a>
