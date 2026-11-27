@@ -97,11 +97,11 @@ function applySettings(payload: AndroidSettingsPayload): void {
         ? 'cat'
         : (lastOrient ?? 'cat');
   if (layout !== lastLayout || orient !== lastOrient) {
-    engine.setKeyboardConfig(layout, orient);
-    lastLayout = layout;
-    lastOrient = orient;
-    needsResize = true;
-  }
+      engine.setKeyboardConfig(layout, orient);
+      lastLayout = layout;
+      lastOrient = orient;
+      needsResize = true;
+    }
 
   if (typeof payload.opacity === 'number' && Number.isFinite(payload.opacity)) {
     const clampedOpacity = Math.max(0.2, Math.min(1.0, payload.opacity));
