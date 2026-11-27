@@ -2,8 +2,11 @@ import * as THREE from 'three';
 import {
   getKeyboardLayout,
   resolveKeyByVk,
+  getKeyLabel,
+  getKeyBubble,
   type KeyboardLayoutId,
   type KeySpec,
+  type KeyboardLang,
 } from './keyboardLayout';
 import type { KeyboardOrientation } from './catEngine';
 
@@ -279,7 +282,7 @@ const keyAtlasCache = new Map<string, KeyAtlasData>();
 const miscTextureCache = new Map<string, THREE.CanvasTexture>();
 
 /**
- * Packs all unique keycap legends for a layout + orientation into ONE compact CanvasTexture atlas
+ * Packs all unique keycap legends for a layout + orientation + language into ONE compact CanvasTexture atlas
  * (96x96 per tile, linear-filtered without mipmaps -> ~4 MB VRAM instead of ~38 MB!), collapsing
  * 67-108 separate keycap textures and 201-324 draw calls into just 2 InstancedMesh draw calls total!
  */
@@ -287,8 +290,9 @@ function getKeycapAtlas(
   layoutId: KeyboardLayoutId,
   keys: readonly KeySpec[],
   rotated180: boolean,
+  keyboardLang: KeyboardLang,
 ): KeyAtlasData {
-  const cacheKey = `${layoutId}|${rotated180 ? 1 : 0}`;
+  const cacheKey = `${layoutId}|${rotated180 ? 1 : 0}|${keyboardLang}`;
   const cached = keyAtlasCache.get(cacheKey);
   if (cached) return cached;
 
@@ -305,7 +309,7 @@ function getKeycapAtlas(
   for (const spec of keys) {
     const accent: 'base' | 'mod' | 'orange' =
       spec.accent === 'orange' ? 'orange' : spec.accent === 'mod' ? 'mod' : 'base';
-    const label = spec.id === 'space' ? '' : spec.id === 'esc' ? 'Esc' : spec.label;
+    const label = getKeyLabel(spec, keyboardLang);
     const tk = `${label}|${accent}`;
     if (!seen.has(tk)) {
       seen.add(tk);
@@ -557,6 +561,7 @@ export class KeyboardAndMouse3D {
   private topTintArray: Float32Array | null = null;
   private boardDisposables: Array<{ dispose(): void }> = [];
 
+  private keyboardLang: KeyboardLang = 'en';
   private layoutId: KeyboardLayoutId = '65';
   private orientation: KeyboardOrientation = 'cat';
   private hitColor = new THREE.Color('#d4f044');
@@ -594,51 +599,51 @@ export class KeyboardAndMouse3D {
 
   constructor(scene: THREE.Scene) {
     // Open-ended 4-sided beveled keycap frustum (no invisible underside!)
-    this.capSideGeo = new THREE.CylinderGeometry(Math.SQRT1_2 * 0.80, Math.SQRT1_2, 1, 4, 1, true);
-    this.capSideGeo.rotateY(Math.PI / 4);
-    this.capSideGeo.translate(0, 0.5, 0);
+      this.capSideGeo = new THREE.CylinderGeometry(Math.SQRT1_2 * 0.80, Math.SQRT1_2, 1, 4, 1, true);
+      this.capSideGeo.rotateY(Math.PI / 4);
+      this.capSideGeo.translate(0, 0.5, 0);
 
     // Exact square top face matching the frustum top corners (+-0.40 at y=1.0)
-    this.capTopBaseGeo = new THREE.PlaneGeometry(0.80, 0.80);
-    this.capTopBaseGeo.rotateX(-Math.PI / 2);
-    this.capTopBaseGeo.translate(0, 1.0, 0);
+      this.capTopBaseGeo = new THREE.PlaneGeometry(0.80, 0.80);
+      this.capTopBaseGeo.rotateX(-Math.PI / 2);
+      this.capTopBaseGeo.translate(0, 1.0, 0);
 
-    this.kbShadowMat = new THREE.MeshBasicMaterial({
+      this.kbShadowMat = new THREE.MeshBasicMaterial({
       map: this.shadowTex,
       transparent: true,
       depthWrite: false,
       opacity: 0.72,
-    });
-    this.privacyMat = new THREE.MeshBasicMaterial({
+      });
+      this.privacyMat = new THREE.MeshBasicMaterial({
       map: makePrivacyTexture(),
       transparent: true,
       opacity: 0,
       depthTest: false,
-    });
+      });
 
     // Subtle playful KuroCat keyboard tilt matching original catEngine.ts
-    this.boardGroup.position.set(0.24, 0.015, 1.08);
-    this.boardGroup.rotation.set(0.06, -0.042, 0);
-    this.deskGroup.add(this.boardGroup);
+      this.boardGroup.position.set(0.24, 0.015, 1.08);
+      this.boardGroup.rotation.set(0.06, -0.042, 0);
+      this.deskGroup.add(this.boardGroup);
 
     // Build Cordless KuroCat Oval Split-Plate Mini Mouse
-    this.mouseGroup.position.copy(this.mouseHome);
-    this.mouseShape.rotation.y = -0.10;
-    this.mouseGroup.add(this.mouseShape);
+      this.mouseGroup.position.copy(this.mouseHome);
+      this.mouseShape.rotation.y = -0.10;
+      this.mouseGroup.add(this.mouseShape);
 
-    const MW = 0.165;
-    const MH = 0.098;
-    const ML = 0.228;
-    const domeGeo = new THREE.SphereGeometry(1, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-    const q = domeGeo.attributes.position;
-    const colors: number[] = [];
-    const topC = new THREE.Color('#f7f7f2');
-    const sideC = new THREE.Color('#cbc8be');
-    const c = new THREE.Color();
-    for (let i = 0; i < q.count; i++) {
-      const x = q.getX(i);
-      const y = q.getY(i);
-      const z = q.getZ(i);
+      const MW = 0.165;
+      const MH = 0.098;
+      const ML = 0.228;
+      const domeGeo = new THREE.SphereGeometry(1, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+      const q = domeGeo.attributes.position;
+      const colors: number[] = [];
+      const topC = new THREE.Color('#f7f7f2');
+      const sideC = new THREE.Color('#cbc8be');
+      const c = new THREE.Color();
+      for (let i = 0; i < q.count; i++) {
+        const x = q.getX(i);
+        const y = q.getY(i);
+        const z = q.getZ(i);
       q.setXYZ(i, x * (1 - 0.07 * z), y * (1 - 0.12 * z), z);
       c.copy(sideC).lerp(topC, smoothstep(0.08, 0.76, y));
       colors.push(c.r, c.g, c.b);
@@ -646,15 +651,15 @@ export class KeyboardAndMouse3D {
     domeGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 
     const mouseShadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(MW * 3.1, ML * 2.8),
-      new THREE.MeshBasicMaterial({ map: this.shadowTex, transparent: true, depthWrite: false, opacity: 0.78 }),
+    new THREE.PlaneGeometry(MW * 3.1, ML * 2.8),
+    new THREE.MeshBasicMaterial({ map: this.shadowTex, transparent: true, depthWrite: false, opacity: 0.78 }),
     );
     mouseShadow.rotation.x = -Math.PI / 2;
     mouseShadow.position.set(0, 0.002, 0.012);
 
     const baseSkirt = new THREE.Mesh(
-      new THREE.CylinderGeometry(MW * 0.96, MW * 0.92, 0.018, 24),
-      new THREE.MeshBasicMaterial({ color: '#b7b5ac' }),
+    new THREE.CylinderGeometry(MW * 0.96, MW * 0.92, 0.018, 24),
+    new THREE.MeshBasicMaterial({ color: '#b7b5ac' }),
     );
     baseSkirt.scale.set(1, 1, ML / MW);
     baseSkirt.position.y = 0.008;
@@ -665,33 +670,33 @@ export class KeyboardAndMouse3D {
     dome.position.y = 0.012;
 
     const onTop = (x: number, z: number) =>
-      0.012 +
-      MH *
-        (1 - (0.12 * z) / ML) *
-        Math.sqrt(Math.max(0, 1 - (x / (MW * (1 - (0.07 * z) / ML))) ** 2 - (z / ML) ** 2));
+    0.012 +
+    MH *
+      (1 - (0.12 * z) / ML) *
+      Math.sqrt(Math.max(0, 1 - (x / (MW * (1 - (0.07 * z) / ML))) ** 2 - (z / ML) ** 2));
 
-    // Merge vertical & horizontal mouse seams into a single static draw call
+  // Merge vertical & horizontal mouse seams into a single static draw call
     const seamMat = new THREE.MeshBasicMaterial({ color: '#8e9099', depthTest: true });
     const vSeam = new TaperTube3D(12, 4, seamMat, 6);
     vSeam.update(
-      (t, out) => {
+    (t, out) => {
         const z = mix(-0.01, ML * 0.95, t);
-        out.set(0, onTop(0, z) + 0.003, z);
+      out.set(0, onTop(0, z) + 0.003, z);
       },
-      () => 0.0038,
+    () => 0.0038,
     );
     const hSeam = new TaperTube3D(14, 4, seamMat, 6);
     hSeam.update(
-      (t, out) => {
+    (t, out) => {
         const x = mix(-MW * 0.94, MW * 0.94, t);
         const z = -0.01 + 0.012 * Math.cos(Math.PI * (t - 0.5));
-        out.set(x, onTop(x, z) + 0.003, z);
+      out.set(x, onTop(x, z) + 0.003, z);
       },
-      () => 0.0036,
+    () => 0.0036,
     );
     const mergedSeamsGeo = mergeStaticGeometries([
-      { geo: vSeam.mesh.geometry },
-      { geo: hSeam.mesh.geometry },
+    { geo: vSeam.mesh.geometry },
+    { geo: hSeam.mesh.geometry },
     ]);
     vSeam.mesh.geometry.dispose();
     hSeam.mesh.geometry.dispose();
@@ -704,7 +709,7 @@ export class KeyboardAndMouse3D {
     wheel.position.set(0, onTop(0, ML * 0.44) + 0.005, ML * 0.44);
     wheel.renderOrder = 7;
 
-    // Curved surface-hugging LMB (+X in cat-facing) & RMB (-X in cat-facing) highlight plates
+  // Curved surface-hugging LMB (+X in cat-facing) & RMB (-X in cat-facing) highlight plates
     const makeBtnPatch = (sideSign: -1 | 1) => {
       const geo = new THREE.PlaneGeometry(1, 1, 8, 8);
       const pos = geo.attributes.position;
@@ -715,47 +720,47 @@ export class KeyboardAndMouse3D {
         const rad = 0.08 + u * 0.85;
         const x = sideSign * Math.max(0.010, Math.cos(ang) * rad * MW * 0.92);
         const z = Math.max(0.004, Math.sin(ang) * rad * ML * 0.92);
-        pos.setXYZ(i, x, onTop(x, z) + 0.004, z);
+      pos.setXYZ(i, x, onTop(x, z) + 0.004, z);
       }
-      geo.computeVertexNormals();
+    geo.computeVertexNormals();
       return geo;
     };
 
     this.leftBtnMat = new THREE.MeshBasicMaterial({
-      color: '#d4f044',
-      transparent: true,
-      opacity: 0,
-      depthTest: true,
-      depthWrite: false,
-      side: THREE.DoubleSide,
+    color: '#d4f044',
+    transparent: true,
+    opacity: 0,
+    depthTest: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
     });
     const leftBtn = new THREE.Mesh(makeBtnPatch(1), this.leftBtnMat);
     leftBtn.renderOrder = 5;
     leftBtn.visible = false;
 
     this.rightBtnMat = new THREE.MeshBasicMaterial({
-      color: '#ff7b3b',
-      transparent: true,
-      opacity: 0,
-      depthTest: true,
-      depthWrite: false,
-      side: THREE.DoubleSide,
+    color: '#ff7b3b',
+    transparent: true,
+    opacity: 0,
+    depthTest: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
     });
     const rightBtn = new THREE.Mesh(makeBtnPatch(-1), this.rightBtnMat);
     rightBtn.renderOrder = 5;
     rightBtn.visible = false;
 
     this.mouseLabelLMat = new THREE.MeshBasicMaterial({
-      map: makeMouseLabelTexture('L', true),
-      transparent: true,
-      depthTest: true,
-      depthWrite: false,
+    map: makeMouseLabelTexture('L', true),
+    transparent: true,
+    depthTest: true,
+    depthWrite: false,
     });
     this.mouseLabelRMat = new THREE.MeshBasicMaterial({
-      map: makeMouseLabelTexture('R', true),
-      transparent: true,
-      depthTest: true,
-      depthWrite: false,
+    map: makeMouseLabelTexture('R', true),
+    transparent: true,
+    depthTest: true,
+    depthWrite: false,
     });
     const lblGeo = new THREE.PlaneGeometry(0.068, 0.068);
     lblGeo.rotateX(-Math.PI / 2);
@@ -767,15 +772,15 @@ export class KeyboardAndMouse3D {
     lblR.renderOrder = 8;
 
     this.mouseShape.add(
-      mouseShadow,
-      baseSkirt,
-      dome,
-      leftBtn,
-      rightBtn,
-      seamsMesh,
-      wheel,
-      lblL,
-      lblR,
+    mouseShadow,
+    baseSkirt,
+    dome,
+    leftBtn,
+    rightBtn,
+    seamsMesh,
+    wheel,
+    lblL,
+    lblR,
     );
     this.mouseShape.userData.leftBtn = leftBtn;
     this.mouseShape.userData.rightBtn = rightBtn;
@@ -783,109 +788,110 @@ export class KeyboardAndMouse3D {
 
     scene.add(this.deskGroup);
     this.rebuildBoard('65', 'cat');
-  }
+    }
 
   public setAccentColors(primaryHex: string, rightHex: string): void {
     this.hitColor.set(primaryHex);
     this.rightBtnColor.set(rightHex);
     this.leftBtnMat.color.set(primaryHex);
     this.rightBtnMat.color.set(rightHex);
-  }
+    }
 
   public setStyle(style: '3d' | '2d'): void {
     const is3D = style === '3d';
     this.mouseBodyMat.vertexColors = is3D;
     this.mouseBodyMat.color.set(is3D ? '#ffffff' : '#f4f4f0');
     this.mouseBodyMat.needsUpdate = true;
-  }
+    }
 
-  public rebuildBoard(layoutId: KeyboardLayoutId, orientation: KeyboardOrientation): void {
+  public rebuildBoard(layoutId: KeyboardLayoutId, orientation: KeyboardOrientation, keyboardLang: KeyboardLang = 'en'): void {
     // Skip redundant rebuild if nothing changed and meshes already exist
-    if (this.sideInstanced && this.layoutId === layoutId && this.orientation === orientation) {
-      return;
-    }
+      if (this.sideInstanced && this.layoutId === layoutId && this.orientation === orientation && this.keyboardLang === keyboardLang) {
+        return;
+      }
 
-    this.layoutId = layoutId;
-    this.orientation = orientation;
-    this.keys.clear();
-    this.activeKeys.clear();
+      this.layoutId = layoutId;
+      this.orientation = orientation;
+      this.keyboardLang = keyboardLang;
+      this.keys.clear();
+      this.activeKeys.clear();
 
-    while (this.boardGroup.children.length > 0) {
+      while (this.boardGroup.children.length > 0) {
       this.boardGroup.remove(this.boardGroup.children[0]);
-    }
-    for (const d of this.boardDisposables) {
-      d.dispose();
-    }
-    this.boardDisposables.length = 0;
+      }
+      for (const d of this.boardDisposables) {
+    d.dispose();
+      }
+      this.boardDisposables.length = 0;
 
-    const layout = getKeyboardLayout(layoutId);
-    const is108 = layoutId === '108';
-    const isCatFacing = orientation === 'cat';
+      const layout = getKeyboardLayout(layoutId);
+      const is108 = layoutId === '108';
+      const isCatFacing = orientation === 'cat';
 
     // Keep mouse cat-facing in both keyboard orientations (#92) so the paw rests on the palm heel without covering RMB
-    this.mouseShape.rotation.y = -0.10;
-    this.mouseLabelLMat.map = makeMouseLabelTexture('L', true);
-    this.mouseLabelRMat.map = makeMouseLabelTexture('R', true);
-    this.mouseLabelLMat.needsUpdate = true;
-    this.mouseLabelRMat.needsUpdate = true;
+      this.mouseShape.rotation.y = -0.10;
+      this.mouseLabelLMat.map = makeMouseLabelTexture('L', true);
+      this.mouseLabelRMat.map = makeMouseLabelTexture('R', true);
+      this.mouseLabelLMat.needsUpdate = true;
+      this.mouseLabelRMat.needsUpdate = true;
 
-    const U = is108 ? 0.122 : 0.150;
-    const CAP = U * 0.87;
-    const W = layout.totalUnits * U + 0.14;
-    const D = layout.totalRows * U + 0.14;
-    this.boardWidth = W;
-    this.boardH = 0.112;
-    this.capH = is108 ? 0.048 : 0.056;
+      const U = is108 ? 0.122 : 0.150;
+      const CAP = U * 0.87;
+      const W = layout.totalUnits * U + 0.14;
+      const D = layout.totalRows * U + 0.14;
+      this.boardWidth = W;
+      this.boardH = 0.112;
+      this.capH = is108 ? 0.048 : 0.056;
 
-    this.boardGroup.position.set(0.24, 0.015, 1.08);
-    this.mouseHome.set(is108 ? -1.46 : -1.16, 0.015, 0.96);
+      this.boardGroup.position.set(0.24, 0.015, 1.08);
+      this.mouseHome.set(is108 ? -1.46 : -1.16, 0.015, 0.96);
 
     // Soft grounded desk shadow under keyboard
-    const kbShadowGeo = new THREE.PlaneGeometry(W * 1.18, D * 1.38);
-    const kbShadow = new THREE.Mesh(kbShadowGeo, this.kbShadowMat);
+      const kbShadowGeo = new THREE.PlaneGeometry(W * 1.18, D * 1.38);
+      const kbShadow = new THREE.Mesh(kbShadowGeo, this.kbShadowMat);
     kbShadow.rotation.x = -Math.PI / 2;
     kbShadow.position.set(0, 0.002, 0.025);
-    this.boardDisposables.push(kbShadowGeo);
+      this.boardDisposables.push(kbShadowGeo);
 
     // Merge baseChassis + topBezel + plate into 1 single vertex-colored draw call!
-    const baseGeo = makeRoundedSlabGeo(W, D, this.boardH, 0.068, 0);
-    const bezelGeo = makeRoundedSlabGeo(W - 0.014, D - 0.014, 0.014, 0.060, this.boardH - 0.008);
-    const plateGeo = makeRoundedSlabGeo(W - 0.062, D - 0.062, 0.008, 0.044, this.boardH + 0.004);
-    const chassisGeo = mergeStaticGeometries([
-      { geo: baseGeo, color: '#202229' },
-      { geo: bezelGeo, color: '#2c2f38' },
-      { geo: plateGeo, color: '#181a20' },
+      const baseGeo = makeRoundedSlabGeo(W, D, this.boardH, 0.068, 0);
+      const bezelGeo = makeRoundedSlabGeo(W - 0.014, D - 0.014, 0.014, 0.060, this.boardH - 0.008);
+      const plateGeo = makeRoundedSlabGeo(W - 0.062, D - 0.062, 0.008, 0.044, this.boardH + 0.004);
+      const chassisGeo = mergeStaticGeometries([
+    { geo: baseGeo, color: '#202229' },
+    { geo: bezelGeo, color: '#2c2f38' },
+    { geo: plateGeo, color: '#181a20' },
     ]);
     baseGeo.dispose();
     bezelGeo.dispose();
     plateGeo.dispose();
-    const chassisMesh = new THREE.Mesh(chassisGeo, this.chassisMat);
-    this.boardDisposables.push(chassisGeo);
-    this.boardGroup.add(kbShadow, chassisMesh);
+      const chassisMesh = new THREE.Mesh(chassisGeo, this.chassisMat);
+      this.boardDisposables.push(chassisGeo);
+      this.boardGroup.add(kbShadow, chassisMesh);
 
     // Single Texture Atlas + 2 InstancedMeshes for ALL 67 or 108 keycaps (2 draw calls total!)
-    const keyCount = layout.keys.length;
-    const atlas = getKeycapAtlas(layoutId, layout.keys, isCatFacing);
+        const keyCount = layout.keys.length;
+        const atlas = getKeycapAtlas(layoutId, layout.keys, isCatFacing, this.keyboardLang);
 
-    const sideInst = new THREE.InstancedMesh(this.capSideGeo, this.capSideMat, keyCount);
+      const sideInst = new THREE.InstancedMesh(this.capSideGeo, this.capSideMat, keyCount);
     sideInst.frustumCulled = false;
 
-    const topGeo = this.capTopBaseGeo.clone();
-    const uvRects = new Float32Array(keyCount * 4);
-    const tints = new Float32Array(keyCount * 3);
-    const uvAttr = new THREE.InstancedBufferAttribute(uvRects, 4);
-    const tintAttr = new THREE.InstancedBufferAttribute(tints, 3);
+      const topGeo = this.capTopBaseGeo.clone();
+      const uvRects = new Float32Array(keyCount * 4);
+      const tints = new Float32Array(keyCount * 3);
+      const uvAttr = new THREE.InstancedBufferAttribute(uvRects, 4);
+      const tintAttr = new THREE.InstancedBufferAttribute(tints, 3);
     tintAttr.setUsage(THREE.DynamicDrawUsage);
     topGeo.setAttribute('aUvRect', uvAttr);
     topGeo.setAttribute('aTint', tintAttr);
 
-    const topMat = createInstancedKeyTopMaterial(atlas.tex);
-    const topInst = new THREE.InstancedMesh(topGeo, topMat, keyCount);
+      const topMat = createInstancedKeyTopMaterial(atlas.tex);
+      const topInst = new THREE.InstancedMesh(topGeo, topMat, keyCount);
     topInst.frustumCulled = false;
-    this.boardDisposables.push(topGeo, topMat);
+      this.boardDisposables.push(topGeo, topMat);
 
-    const baseY = this.boardH + 0.008;
-    for (let i = 0; i < keyCount; i++) {
+      const baseY = this.boardH + 0.008;
+      for (let i = 0; i < keyCount; i++) {
       const spec = layout.keys[i];
       const rY = spec.rowY ?? spec.row;
       const rSpan = spec.rowSpan ?? 1;
@@ -904,157 +910,157 @@ export class KeyboardAndMouse3D {
       this.tmpPos.set(x, baseY, z);
       this.tmpScale.set(scaleX, scaleY, scaleZ);
       this.tmpMat.compose(this.tmpPos, this.tmpQuat, this.tmpScale);
-      sideInst.setMatrixAt(i, this.tmpMat);
-      topInst.setMatrixAt(i, this.tmpMat);
+    sideInst.setMatrixAt(i, this.tmpMat);
+    topInst.setMatrixAt(i, this.tmpMat);
 
       const accent: 'base' | 'mod' | 'orange' =
-        spec.accent === 'orange' ? 'orange' : spec.accent === 'mod' ? 'mod' : 'base';
-      sideInst.setColorAt(
-        i,
-        accent === 'orange'
-          ? this.sideColorOrange
-          : accent === 'mod'
-            ? this.sideColorMod
-            : this.sideColorBase,
-      );
+    spec.accent === 'orange' ? 'orange' : spec.accent === 'mod' ? 'mod' : 'base';
+    sideInst.setColorAt(
+    i,
+    accent === 'orange'
+    ? this.sideColorOrange
+    : accent === 'mod'
+          ? this.sideColorMod
+          : this.sideColorBase,
+    );
 
-      const legendText = spec.id === 'space' ? '' : spec.id === 'esc' ? 'Esc' : spec.label;
+      const legendText = getKeyLabel(spec, this.keyboardLang);
       const rect = atlas.rects.get(`${legendText}|${accent}`) ?? [0, 0, 0.1, 0.1];
-      uvRects[i * 4] = rect[0];
-      uvRects[i * 4 + 1] = rect[1];
-      uvRects[i * 4 + 2] = rect[2];
-      uvRects[i * 4 + 3] = rect[3];
+    uvRects[i * 4] = rect[0];
+    uvRects[i * 4 + 1] = rect[1];
+    uvRects[i * 4 + 2] = rect[2];
+    uvRects[i * 4 + 3] = rect[3];
 
-      tints[i * 3] = 1;
-      tints[i * 3 + 1] = 1;
-      tints[i * 3 + 2] = 1;
+    tints[i * 3] = 1;
+    tints[i * 3 + 1] = 1;
+    tints[i * 3 + 2] = 1;
 
       this.keys.set(spec.id, {
-        spec,
-        index: i,
-        x,
-        z,
-        scaleX,
-        scaleY,
-        scaleZ,
-        down: false,
-        depth: 0,
-        glow: 0,
+    spec,
+    index: i,
+    x,
+    z,
+    scaleX,
+    scaleY,
+    scaleZ,
+    down: false,
+    depth: 0,
+    glow: 0,
       });
-    }
+      }
 
     sideInst.instanceMatrix.needsUpdate = true;
-    if (sideInst.instanceColor) sideInst.instanceColor.needsUpdate = true;
+      if (sideInst.instanceColor) sideInst.instanceColor.needsUpdate = true;
     topInst.instanceMatrix.needsUpdate = true;
-    this.sideInstanced = sideInst;
-    this.topInstanced = topInst;
-    this.topTintAttr = tintAttr;
-    this.topTintArray = tints;
-    this.boardGroup.add(sideInst, topInst);
+      this.sideInstanced = sideInst;
+      this.topInstanced = topInst;
+      this.topTintAttr = tintAttr;
+      this.topTintArray = tints;
+      this.boardGroup.add(sideInst, topInst);
 
     // Privacy dark frosted shield over the 3D keyboard
-    const privGeo = new THREE.PlaneGeometry(W - 0.08, D - 0.08);
-    this.boardDisposables.push(privGeo);
-    this.privacyPlate = new THREE.Mesh(privGeo, this.privacyMat);
-    this.privacyPlate.rotation.x = -Math.PI / 2;
-    this.privacyPlate.position.set(0, this.boardH + this.capH + 0.025, 0);
-    this.privacyPlate.renderOrder = 30;
-    this.privacyPlate.visible = false;
-    this.boardGroup.add(this.privacyPlate);
+      const privGeo = new THREE.PlaneGeometry(W - 0.08, D - 0.08);
+      this.boardDisposables.push(privGeo);
+      this.privacyPlate = new THREE.Mesh(privGeo, this.privacyMat);
+      this.privacyPlate.rotation.x = -Math.PI / 2;
+      this.privacyPlate.position.set(0, this.boardH + this.capH + 0.025, 0);
+      this.privacyPlate.renderOrder = 30;
+      this.privacyPlate.visible = false;
+      this.boardGroup.add(this.privacyPlate);
 
-    this.deskGroup.updateMatrixWorld(false);
-    this.boardGroup.updateMatrixWorld(false);
-  }
+      this.deskGroup.updateMatrixWorld(false);
+      this.boardGroup.updateMatrixWorld(false);
+      }
 
   public getLayoutId(): KeyboardLayoutId {
-    return this.layoutId;
-  }
+      return this.layoutId;
+      }
 
   public getOrientation(): KeyboardOrientation {
-    return this.orientation;
-  }
+      return this.orientation;
+      }
 
   public getBoardWidth(): number {
-    return this.boardWidth;
-  }
+      return this.boardWidth;
+      }
 
   public resolveKey(vk: number): KeyEntry3D | null {
-    const spec = resolveKeyByVk(vk, this.layoutId);
-    if (!spec) return null;
-    return this.keys.get(spec.id) || null;
-  }
+      const spec = resolveKeyByVk(vk, this.layoutId);
+      if (!spec) return null;
+      return this.keys.get(spec.id) || null;
+      }
 
   public getKeyById(id: string): KeyEntry3D | null {
-    return this.keys.get(id) || null;
-  }
+      return this.keys.get(id) || null;
+      }
 
   public setKeyDown(id: string, down: boolean): void {
-    const k = this.keys.get(id);
-    if (!k) return;
-    if (k.down !== down) {
-      k.down = down;
+      const k = this.keys.get(id);
+      if (!k) return;
+      if (k.down !== down) {
+    k.down = down;
       this.activeKeys.add(k);
-    } else if (down) {
+      } else if (down) {
       this.activeKeys.add(k);
-    }
-  }
+      }
+      }
 
   public releaseAllKeys(): void {
-    for (const k of this.keys.values()) {
+      for (const k of this.keys.values()) {
       if (k.down) {
-        k.down = false;
-        this.activeKeys.add(k);
+    k.down = false;
+      this.activeKeys.add(k);
       }
-    }
-  }
+      }
+      }
 
   public keyTopWorld(id: string, out = new THREE.Vector3()): THREE.Vector3 {
-    const k = this.keys.get(id);
-    this.deskGroup.updateMatrixWorld(false);
-    this.boardGroup.updateMatrixWorld(false);
-    if (!k) return out.set(0.24, this.boardH + this.capH, 1.08);
-    return out
-      .set(k.x, this.boardH + 0.008 + this.capH - k.depth, k.z)
-      .applyMatrix4(this.boardGroup.matrixWorld);
-  }
+      const k = this.keys.get(id);
+      this.deskGroup.updateMatrixWorld(false);
+      this.boardGroup.updateMatrixWorld(false);
+      if (!k) return out.set(0.24, this.boardH + this.capH, 1.08);
+      return out
+    .set(k.x, this.boardH + 0.008 + this.capH - k.depth, k.z)
+    .applyMatrix4(this.boardGroup.matrixWorld);
+      }
 
   public isRightEdgeTailKey(id: string): boolean {
-    const k = this.keys.get(id);
-    if (!k) return false;
-    return k.x >= this.boardWidth * 0.22;
-  }
+      const k = this.keys.get(id);
+      if (!k) return false;
+      return k.x >= this.boardWidth * 0.22;
+      }
 
   public setMouseNormalized(nx: number, ny: number): void {
-    this.mouseTarget.set((nx - 0.5) * 0.22, 0, (ny - 0.5) * 0.14);
-  }
+      this.mouseTarget.set((nx - 0.5) * 0.22, 0, (ny - 0.5) * 0.14);
+      }
 
   public pulseScrollWheel(): void {
-    this.wheelGlow = 1;
-  }
+      this.wheelGlow = 1;
+      }
 
   public mouseTopWorld(out = new THREE.Vector3()): THREE.Vector3 {
-    this.deskGroup.updateMatrixWorld(false);
-    this.mouseGroup.updateMatrixWorld(false);
-    this.mouseShape.updateMatrixWorld(false);
-    return out.set(0, 0.115, -0.05).applyMatrix4(this.mouseShape.matrixWorld);
-  }
+      this.deskGroup.updateMatrixWorld(false);
+      this.mouseGroup.updateMatrixWorld(false);
+      this.mouseShape.updateMatrixWorld(false);
+      return out.set(0, 0.115, -0.05).applyMatrix4(this.mouseShape.matrixWorld);
+      }
 
-  public update(
+    public update(
     dt: number,
     leftDown: boolean,
     rightDown: boolean,
     deskHopY: number,
     privacyAlpha: number,
-  ): void {
-    if (deskHopY !== this.lastDeskHopY) {
+    ): void {
+      if (deskHopY !== this.lastDeskHopY) {
       this.deskGroup.position.y = deskHopY;
       this.lastDeskHopY = deskHopY;
-    }
+      }
 
     // Only animate keys that are actually pressed or rebounding/fading (0-3 keys instead of 67-108!)
-    if (this.activeKeys.size > 0 && this.sideInstanced && this.topInstanced && this.topTintAttr && this.topTintArray) {
-      let matrixDirty = false;
-      let tintDirty = false;
+      if (this.activeKeys.size > 0 && this.sideInstanced && this.topInstanced && this.topTintAttr && this.topTintArray) {
+    let matrixDirty = false;
+    let tintDirty = false;
       const baseY = this.boardH + 0.008;
       const kDownDepth = approach(62, dt);
       const kUpDepth = approach(24, dt);
@@ -1062,90 +1068,90 @@ export class KeyboardAndMouse3D {
       const kUpGlow = approach(6.5, dt);
 
       for (const k of this.activeKeys) {
-        const targetDepth = k.down ? 0.032 : 0;
-        k.depth += (targetDepth - k.depth) * (k.down ? kDownDepth : kUpDepth);
-        k.glow += ((k.down ? 1 : 0) - k.glow) * (k.down ? kDownGlow : kUpGlow);
+      const targetDepth = k.down ? 0.032 : 0;
+    k.depth += (targetDepth - k.depth) * (k.down ? kDownDepth : kUpDepth);
+    k.glow += ((k.down ? 1 : 0) - k.glow) * (k.down ? kDownGlow : kUpGlow);
 
-        const settled = !k.down && k.depth < 0.00025 && k.glow < 0.002;
-        if (settled) {
-          k.depth = 0;
-          k.glow = 0;
-          this.activeKeys.delete(k);
-        }
+      const settled = !k.down && k.depth < 0.00025 && k.glow < 0.002;
+      if (settled) {
+    k.depth = 0;
+    k.glow = 0;
+      this.activeKeys.delete(k);
+      }
 
-        this.tmpPos.set(k.x, baseY - k.depth, k.z);
-        this.tmpScale.set(k.scaleX, k.scaleY, k.scaleZ);
-        this.tmpMat.compose(this.tmpPos, this.tmpQuat, this.tmpScale);
-        this.sideInstanced.setMatrixAt(k.index, this.tmpMat);
-        this.topInstanced.setMatrixAt(k.index, this.tmpMat);
-        matrixDirty = true;
+      this.tmpPos.set(k.x, baseY - k.depth, k.z);
+      this.tmpScale.set(k.scaleX, k.scaleY, k.scaleZ);
+      this.tmpMat.compose(this.tmpPos, this.tmpQuat, this.tmpScale);
+      this.sideInstanced.setMatrixAt(k.index, this.tmpMat);
+      this.topInstanced.setMatrixAt(k.index, this.tmpMat);
+    matrixDirty = true;
 
-        this.tmpCol.copy(this.whiteColor).lerp(this.hitColor, k.glow * 0.90);
-        const off = k.index * 3;
-        this.topTintArray[off] = this.tmpCol.r;
-        this.topTintArray[off + 1] = this.tmpCol.g;
-        this.topTintArray[off + 2] = this.tmpCol.b;
-        tintDirty = true;
+      this.tmpCol.copy(this.whiteColor).lerp(this.hitColor, k.glow * 0.90);
+      const off = k.index * 3;
+      this.topTintArray[off] = this.tmpCol.r;
+      this.topTintArray[off + 1] = this.tmpCol.g;
+      this.topTintArray[off + 2] = this.tmpCol.b;
+    tintDirty = true;
       }
 
       if (matrixDirty) {
-        this.sideInstanced.instanceMatrix.needsUpdate = true;
-        this.topInstanced.instanceMatrix.needsUpdate = true;
+      this.sideInstanced.instanceMatrix.needsUpdate = true;
+      this.topInstanced.instanceMatrix.needsUpdate = true;
       }
       if (tintDirty) {
-        this.topTintAttr.needsUpdate = true;
+      this.topTintAttr.needsUpdate = true;
       }
-    }
+      }
 
-    if (this.privacyPlate) {
+      if (this.privacyPlate) {
       this.privacyPlate.visible = privacyAlpha > 0.02;
       this.privacyMat.opacity = privacyAlpha;
-    }
+      }
 
-    this.mouseTarget.multiplyScalar(1 - approach(1.6, dt));
-    this.mouseOffset.copy(this.mouseFollow.step(this.mouseTarget, dt));
-    this.mouseGroup.position.copy(this.mouseHome).add(this.mouseOffset);
+      this.mouseTarget.multiplyScalar(1 - approach(1.6, dt));
+      this.mouseOffset.copy(this.mouseFollow.step(this.mouseTarget, dt));
+      this.mouseGroup.position.copy(this.mouseHome).add(this.mouseOffset);
 
-    this.leftPress += ((leftDown ? 1 : 0) - this.leftPress) * approach(32, dt);
-    this.rightPress += ((rightDown ? 1 : 0) - this.rightPress) * approach(32, dt);
-    if (this.leftPress < 0.002 && !leftDown) this.leftPress = 0;
-    if (this.rightPress < 0.002 && !rightDown) this.rightPress = 0;
-    this.wheelGlow = Math.max(0, this.wheelGlow - dt * 3.8);
+      this.leftPress += ((leftDown ? 1 : 0) - this.leftPress) * approach(32, dt);
+      this.rightPress += ((rightDown ? 1 : 0) - this.rightPress) * approach(32, dt);
+      if (this.leftPress < 0.002 && !leftDown) this.leftPress = 0;
+      if (this.rightPress < 0.002 && !rightDown) this.rightPress = 0;
+      this.wheelGlow = Math.max(0, this.wheelGlow - dt * 3.8);
 
     // Hide transparent L/R click highlight patches completely when not pressed (saves 2 alpha draw calls!)
-    const leftBtn = this.mouseShape.userData.leftBtn as THREE.Mesh | undefined;
-    const rightBtn = this.mouseShape.userData.rightBtn as THREE.Mesh | undefined;
-    this.leftBtnMat.opacity = 0.88 * this.leftPress;
-    this.rightBtnMat.opacity = 0.88 * this.rightPress;
-    if (leftBtn) leftBtn.visible = this.leftPress > 0.005;
-    if (rightBtn) rightBtn.visible = this.rightPress > 0.005;
+      const leftBtn = this.mouseShape.userData.leftBtn as THREE.Mesh | undefined;
+      const rightBtn = this.mouseShape.userData.rightBtn as THREE.Mesh | undefined;
+      this.leftBtnMat.opacity = 0.88 * this.leftPress;
+      this.rightBtnMat.opacity = 0.88 * this.rightPress;
+      if (leftBtn) leftBtn.visible = this.leftPress > 0.005;
+      if (rightBtn) rightBtn.visible = this.rightPress > 0.005;
 
-    this.wheelMat.color.set('#555966').lerp(this.hitColor, this.wheelGlow);
+      this.wheelMat.color.set('#555966').lerp(this.hitColor, this.wheelGlow);
 
-    const anyPress = Math.max(this.leftPress, this.rightPress);
-    this.mouseShape.scale.set(1 + 0.03 * anyPress, 1 - 0.10 * anyPress, 1);
-  }
+      const anyPress = Math.max(this.leftPress, this.rightPress);
+      this.mouseShape.scale.set(1 + 0.03 * anyPress, 1 - 0.10 * anyPress, 1);
+      }
 
   public dispose(): void {
-    this.deskGroup.traverse((obj: THREE.Object3D) => {
+      this.deskGroup.traverse((obj: THREE.Object3D) => {
       const mesh = obj as THREE.Mesh;
       if (mesh.geometry) mesh.geometry.dispose();
       const mat = mesh.material;
       if (Array.isArray(mat)) {
-        for (const m of mat) m.dispose();
+      for (const m of mat) m.dispose();
       } else if (mat) {
-        mat.dispose();
+    mat.dispose();
       }
-    });
-    for (const d of this.boardDisposables) {
-      d.dispose();
-    }
-    this.boardDisposables.length = 0;
-    this.capSideGeo.dispose();
-    this.capTopBaseGeo.dispose();
-    this.capSideMat.dispose();
-    this.chassisMat.dispose();
-    this.kbShadowMat.dispose();
+      });
+      for (const d of this.boardDisposables) {
+    d.dispose();
+      }
+      this.boardDisposables.length = 0;
+      this.capSideGeo.dispose();
+      this.capTopBaseGeo.dispose();
+      this.capSideMat.dispose();
+      this.chassisMat.dispose();
+      this.kbShadowMat.dispose();
     disposeKeyboardCaches();
-  }
+      }
 }

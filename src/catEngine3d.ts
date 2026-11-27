@@ -26,6 +26,7 @@ import {
   mix,
   smoothstep,
 } from './keyboard3d';
+import { getKeyLabel, getKeyBubble, type KeyboardLang } from './keyboardLayout';
 
 export type CollarColorId = 'none' | 'red' | 'blue' | 'pink' | 'green';
 
@@ -832,13 +833,14 @@ export class KuroCatEngine3D {
   private currentSkin: CatSkinConfig | null = null;
   private currentPalette: FurPalette3D | null = null;
   private renderStyle: RenderStyle3D = '3d';
-  private collarId: CollarColorId = 'none';
-  private chromaKeyBg: string | null = null;
-  private embedded = false;
-  private renderScale = 1.0;
-  private tailKeyMode: TailKeyMode = 'smart';
-  private tailKeyIdSet = new Set<string>(DEFAULT_TAIL_KEY_IDS);
-  private bend = { x: 0, z: 0, squash: 0, bellySwell: 0 };
+    private collarId: CollarColorId = 'none';
+    private chromaKeyBg: string | null = null;
+    private embedded = false;
+    private renderScale = 1.0;
+    private tailKeyMode: TailKeyMode = 'smart';
+    private tailKeyIdSet = new Set<string>(DEFAULT_TAIL_KEY_IDS);
+    private keyboardLang: KeyboardLang = 'en';
+    private bend = { x: 0, z: 0, squash: 0, bellySwell: 0 };
   private headRot = { pitch: -0.04, yaw: 0, roll: 0 };
 
   private paws: { L: PawTrack3D; R: PawTrack3D };
@@ -2476,13 +2478,14 @@ export class KuroCatEngine3D {
     }
   }
 
-  public setKeyboardConfig(layout: KeyboardLayoutId, orient: KeyboardOrientation): void {
-    this.desk.rebuildBoard(layout, orient);
-    this.syncDeskFloorShadows();
-    this.paws.L.keyId = null;
-    this.paws.R.keyId = null;
-    this.tailTap.keyId = null;
-  }
+  public setKeyboardConfig(layout: KeyboardLayoutId, orient: KeyboardOrientation, keyboardLang: KeyboardLang = 'en'): void {
+      this.desk.rebuildBoard(layout, orient, keyboardLang);
+      this.keyboardLang = keyboardLang;
+      this.syncDeskFloorShadows();
+      this.paws.L.keyId = null;
+      this.paws.R.keyId = null;
+      this.tailTap.keyId = null;
+    }
 
   public setChromaKeyBg(hex: string | null): void {
     const normalized = typeof hex === 'string' && hex.trim() ? hex.trim() : null;
@@ -2942,9 +2945,9 @@ export class KuroCatEngine3D {
           (this.desk.isRightEdgeTailKey(k.spec.id) ||
             (this.tailKeyMode === 'smart' && (k.spec.id === 'space' || k.spec.id === 'enter')));
     if (useTail) {
-      this.triggerTailKey(k.spec.id, k.spec.bubble || k.spec.label || k.spec.id);
-      return;
-    }
+          this.triggerTailKey(k.spec.id, getKeyBubble(k.spec, this.keyboardLang));
+          return;
+        }
 
     const mousingNow = this.isMousing();
     const isLeftSideScreen = k.x < 0.05;
@@ -2962,8 +2965,8 @@ export class KuroCatEngine3D {
     this.sSquash.kick(0.32);
     this.sPitch.kick(0.75);
     if (this.showKeyBubbles) {
-      this.spawnKeyPopup(k.spec.id, k.spec.bubble || k.spec.label || k.spec.id, paw.side);
-    }
+          this.spawnKeyPopup(k.spec.id, getKeyBubble(k.spec, this.keyboardLang), paw.side);
+        }
   }
 
   public onKeyUp(vk: number): void {

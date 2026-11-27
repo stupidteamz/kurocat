@@ -299,7 +299,7 @@ function syncObs3D(
     if (activeCat) engine3d.setCatSkin(activeCat);
     engine3d.setCollar(collar);
     engine3d.setHeadphones(computeObsHeadphonesOn(activeCat));
-    engine3d.setKeyboardConfig(layout, orient);
+    engine3d.setKeyboardConfig(layout, orient, 'en');
     engine3d.setTailKeyConfig(tailMode, tailIds);
     engine3d.setRenderScale(overrideScale ?? 1.0);
     engine3d.setPrivacyMode(privacyActive);

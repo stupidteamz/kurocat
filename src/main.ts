@@ -340,6 +340,7 @@ function syncEngine3DState(): void {
   const activeCat = catList.find((c) => c.id === settings.catBreed) ?? catList[0];
   const kbLayout: KeyboardLayoutId = settings.keyboardLayout === '108' ? '108' : '65';
   const kbOrient: KeyboardOrientation = settings.keyboardOrientation === 'viewer' ? 'viewer' : 'cat';
+  const kbLang: 'en' | 'th' = settings.language === 'th' ? 'th' : 'en';
   const tailMode: TailKeyMode =
     settings.tailKeyMode === 'custom' ||
     settings.tailKeyMode === 'edge' ||
@@ -363,7 +364,7 @@ function syncEngine3DState(): void {
   engine3d.setCollar(collar);
   engine3d.setHeadphones(shouldWearHeadphonesNow());
   engine3d.setGameActive(gameActive);
-  engine3d.setKeyboardConfig(kbLayout, kbOrient);
+  engine3d.setKeyboardConfig(kbLayout, kbOrient, kbLang);
   engine3d.setTailKeyConfig(tailMode, tailIds);
   engine3d.setPrivacyMode(privacyActive);
   engine3d.setFpsCap(settings.fpsCap === 30 ? 30 : 0);
