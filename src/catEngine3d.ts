@@ -5,7 +5,7 @@ import {
   type CatEarShape,
   type CatSkinConfig,
 } from './catSkins';
-import type { KeyboardLayoutId, KeyboardLang } from './keyboardLayout';
+import type { KeyboardLayoutId } from './keyboardLayout';
 import type { CatHitZone, KeyboardOrientation, PeekEdge, TailKeyMode } from './catEngine';
 import { DEFAULT_TAIL_KEY_IDS } from './catEngine';
 import { catAudio } from './audio';
@@ -831,18 +831,17 @@ export class KuroCatEngine3D {
   private readonly camAnchor = new THREE.Vector3(0.06, 0.82, 0.36);
 
   // State machine
-  private currentSkin: CatSkinConfig | null = null;
-  private currentPalette: FurPalette3D | null = null;
-  private renderStyle: RenderStyle3D = '3d';
-    private collarId: CollarColorId = 'none';
-    private chromaKeyBg: string | null = null;
-    private embedded = false;
-    private renderScale = 1.0;
-    private tailKeyMode: TailKeyMode = 'smart';
-    private tailKeyIdSet = new Set<string>(DEFAULT_TAIL_KEY_IDS);
-    private keyboardLang: KeyboardLang = 'en';
-    private bend = { x: 0, z: 0, squash: 0, bellySwell: 0 };
-  private headRot = { pitch: -0.04, yaw: 0, roll: 0 };
+    private currentSkin: CatSkinConfig | null = null;
+    private currentPalette: FurPalette3D | null = null;
+    private renderStyle: RenderStyle3D = '3d';
+      private collarId: CollarColorId = 'none';
+      private chromaKeyBg: string | null = null;
+      private embedded = false;
+      private renderScale = 1.0;
+      private tailKeyMode: TailKeyMode = 'smart';
+      private tailKeyIdSet = new Set<string>(DEFAULT_TAIL_KEY_IDS);
+      private bend = { x: 0, z: 0, squash: 0, bellySwell: 0 };
+    private headRot = { pitch: -0.04, yaw: 0, roll: 0 };
 
   private paws: { L: PawTrack3D; R: PawTrack3D };
   private tailTap = {
