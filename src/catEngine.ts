@@ -19,6 +19,9 @@ export type CatBreed = 'black' | 'ragdoll' | 'dafeiyu';
 export type KeyboardOrientation = 'cat' | 'viewer';
 export type TailKeyMode = 'smart' | 'custom' | 'edge' | 'off';
 
+export type CatHitZone = 'nose' | 'chin' | 'tail' | 'head' | 'body' | null;
+export type PeekEdge = 'none' | 'left' | 'right';
+
 export const DEFAULT_TAIL_KEY_IDS: readonly string[] = ['enter', 'space', 'bs', 'esc'];
 
 export const TAIL_KEY_PRESETS = {
@@ -56,7 +59,7 @@ interface SmearFrame {
   alpha: number;
 }
 
-type PawMode = 'idle' | 'curled' | 'poke' | 'mouse';
+type PawMode = 'idle' | 'curled' | 'poke' | 'mouse' | 'groom' | 'stretch' | 'knead' | 'scruff' | 'peek';
 
 interface PawState {
   side: 'left' | 'right';
@@ -263,10 +266,11 @@ export class KuroCatEngine {
   private tailPickerActive = false;
   private tailPickerSelection: ReadonlySet<string> | null = null;
   private tailPickerHoverId: string | null = null;
-  private renderScale = 1.0;
-  private embedded = false;
-  private dafeiyu = new DaFeiYuRenderer();
-  private catTail = {
+    private renderScale = 1.0;
+    private chromaKeyBg: string | null = null;
+    private embedded = false;
+    private dafeiyu = new DaFeiYuRenderer();
+    private catTail = {
     heldVks: new Set<number>(),
     targetX: 320,
     targetY: 345,
@@ -281,12 +285,21 @@ export class KuroCatEngine {
     active: false,
   };
   private tailCrossLeft = 0;
-  private privacyClose = 0;
-  private privacyTypingAt = -10000;
-  private lastMouseNX = 0.5;
-  private lastDt = 1 / 60;
+    private privacyClose = 0;
+    private privacyTypingAt = -10000;
+    private lastMouseNX = 0.5;
+    private lastDt = 1 / 60;
 
-  public setPrivacyMode(active: boolean): void {
+    // Screen-edge peek mode (cat hides keyboard & torso off-edge, peeking ONLY its head & gripping paws!)
+    private peekEdge: PeekEdge = 'none';
+    private peekPreviewEdge: PeekEdge = 'none';
+    private peekVisualEdge: 'left' | 'right' = 'left';
+    private peekAmount = 0;
+    private peekHover = 0;
+    private peekTransform = { tx: 0, ty: 0, rot: 0, pivotX: 196, pivotY: 136 };
+    private liveTailCurvePts: Vec2[] = [];
+
+    public setPrivacyMode(active: boolean): void {
     this.wakeAction();
     this.privacyMode = active;
     this.dafeiyu.onPrivacyModeChanged(active);
@@ -312,11 +325,19 @@ export class KuroCatEngine {
   }
 
   public setRenderScale(scale: number): void {
-    this.renderScale = Math.max(0.2, Math.min(1.5, scale));
-    this.wakeAction();
-  }
+      this.renderScale = Math.max(0.2, Math.min(1.5, scale));
+      this.wakeAction();
+    }
 
-  public getLogicalSize(): { w: number; h: number } {
+    public setChromaKeyBg(hex: string | null): void {
+      const next = typeof hex === 'string' && hex.trim() ? hex.trim() : null;
+      if (this.chromaKeyBg === next) return;
+      this.chromaKeyBg = next;
+      this.kbCacheKey = '';
+      this.wakeAction();
+    }
+
+    public getLogicalSize(): { w: number; h: number } {
     return { w: this.logicalW, h: this.logicalH };
   }
 
@@ -511,9 +532,300 @@ export class KuroCatEngine {
       }
     }
     return null;
-  }
+      }
 
-  private shouldUseTailForKey(
+      public clientToLogical(clientX: number, clientY: number): Vec2 | null {
+        const rect = this.canvas.getBoundingClientRect();
+        if (rect.width < 2 || rect.height < 2) return null;
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        const canvasX = (clientX - rect.left) * scaleX;
+        const canvasY = (clientY - rect.top) * scaleY;
+        const { offsetX, offsetY, uniformScale } = this.getViewportTransform();
+        if (uniformScale <= 0.001) return null;
+        const rawX = (canvasX - offsetX) / uniformScale;
+        const rawY = (canvasY - offsetY) / uniformScale;
+        if (this.peekAmount > 0.01) {
+          // Inverse of peek render transform: translate(pivot+tx, pivot+ty) * rotate(rot) * translate(-pivot)
+          const { tx, ty, rot, pivotX, pivotY } = this.peekTransform;
+          const dx = rawX - (pivotX + tx);
+          const dy = rawY - (pivotY + ty);
+          const cos = Math.cos(-rot);
+          const sin = Math.sin(-rot);
+          return {
+            x: pivotX + dx * cos - dy * sin,
+            y: pivotY + dx * sin + dy * cos,
+          };
+        }
+        return { x: rawX, y: rawY };
+      }
+
+      public setPeekEdge(edge: PeekEdge): void {
+        const next: PeekEdge = edge === 'left' || edge === 'right' ? edge : 'none';
+        const hadPreview = this.peekPreviewEdge !== 'none';
+        this.peekPreviewEdge = 'none';
+        if (next !== this.peekEdge) {
+          this.peekEdge = next;
+          if (next !== 'none') {
+            this.peekVisualEdge = next;
+            this.isCross = false;
+            this.annoy = 0;
+            this.idleAct = null;
+            this.asleep = false;
+            this.peekSpring.kick(1.4);
+          } else {
+            this.squashSpring.kick(2.6);
+            catAudio.playSoftLand();
+          }
+          this.wakeAction();
+        } else if (hadPreview) {
+          this.wakeAction();
+        }
+      }
+
+      /** Live drag preview: cat preemptively tucks desk & peeks its head while still dragged at a screen edge (Option 2, no neon bar!). */
+      public setPeekPreview(edge: PeekEdge): void {
+        const next: PeekEdge = edge === 'left' || edge === 'right' ? edge : 'none';
+        if (next !== this.peekPreviewEdge) {
+          this.peekPreviewEdge = next;
+          if (next !== 'none') {
+            this.peekVisualEdge = next;
+            this.earPerkSpring.kick(1.6);
+          }
+          this.wakeAction();
+        }
+      }
+
+      public getPeekEdge(): PeekEdge {
+        return this.peekEdge;
+      }
+
+      private computePeekTransform2D(): { tx: number; ty: number; rot: number; pivotX: number; pivotY: number } {
+        const p = Math.max(0, Math.min(1, this.peekAmount));
+        const isDafeiyu = this.catBreed === 'dafeiyu';
+        const headY = this.catTopY + 0.24 * this.catHeight;
+        const pivotX = isDafeiyu ? (this.keyboardLayout === '108' ? 268 : 192) : this.catCenterX;
+        const pivotY = isDafeiyu ? 176 : headY;
+        if (p <= 0.001) {
+          return { tx: 0, ty: 0, rot: 0, pivotX, pivotY };
+        }
+        const { offsetX, offsetY, uniformScale } = this.getViewportTransform();
+        const s = Math.max(0.001, uniformScale);
+        const leftEdge = -offsetX / s;
+        const rightEdge = (this.canvas.width - offsetX) / s;
+        const topEdge = -offsetY / s;
+        const bottomEdge = (this.canvas.height - offsetY) / s;
+        const midY = (topEdge + bottomEdge) * 0.5;
+        const extraPop = this.peekHover * 14;
+        const edgeInset = isDafeiyu ? 64 : 44;
+        const tiltRad = isDafeiyu ? 1.18 : 1.28;
+
+        let goalTx = 0;
+        let goalTy = 0;
+        let goalRot = 0;
+        if (this.peekVisualEdge === 'left') {
+          // Sideways wall-peek from the left edge: torso tucks cleanly off-edge, ONLY head, BOTH ears/hood & gripping paws/hands show!
+          goalTx = leftEdge + edgeInset + extraPop - pivotX;
+          goalTy = midY - pivotY;
+          goalRot = tiltRad;
+        } else {
+          // Mirrored sideways wall-peek from the right edge!
+          goalTx = rightEdge - edgeInset - extraPop - pivotX;
+          goalTy = midY - pivotY;
+          goalRot = -tiltRad;
+        }
+        return {
+          tx: goalTx * p,
+          ty: goalTy * p,
+          rot: goalRot * p,
+          pivotX,
+          pivotY,
+        };
+      }
+
+      /** Transform a cat-local logical point into visible viewport CSS pixels (accounts for peek edge transform). */
+      public logicalToCssPoint(lx: number, ly: number): { x: number; y: number } | null {
+        const rect = this.canvas.getBoundingClientRect();
+        if (rect.width < 2 || rect.height < 2) return null;
+        let vx = lx;
+        let vy = ly;
+        if (this.peekAmount > 0.01) {
+          const { tx, ty, rot, pivotX, pivotY } = this.peekTransform;
+          const dx = lx - pivotX;
+          const dy = ly - pivotY;
+          const cos = Math.cos(rot);
+          const sin = Math.sin(rot);
+          vx = pivotX + tx + dx * cos - dy * sin;
+          vy = pivotY + ty + dx * sin + dy * cos;
+        }
+        const { offsetX, offsetY, uniformScale } = this.getViewportTransform();
+        const cx = offsetX + vx * uniformScale;
+        const cy = offsetY + vy * uniformScale;
+        return {
+          x: (cx / Math.max(1, this.canvas.width)) * rect.width,
+          y: (cy / Math.max(1, this.canvas.height)) * rect.height,
+        };
+      }
+
+      public getCatHitZonesLogical(): {
+        nose: { x: number; y: number; rx: number; ry: number };
+        chin: { x: number; y: number; rx: number; ry: number };
+        head: { x: number; y: number; rx: number; ry: number };
+        body: { x: number; y: number; rx: number; ry: number };
+        tailPts: Vec2[];
+      } {
+        if (this.catBreed === 'dafeiyu') {
+          const pivotX = this.keyboardLayout === '108' ? 268 : 192;
+          return {
+            nose: { x: pivotX, y: 204, rx: 18, ry: 15 },
+            chin: { x: pivotX, y: 232, rx: 32, ry: 18 },
+            head: { x: pivotX, y: 176, rx: 94, ry: 104 },
+            body: { x: pivotX, y: 288, rx: 74, ry: 60 },
+            tailPts: [],
+          };
+        }
+        const breath = Math.sin(this.breathPhase) * (1.0 + this.sleepAmount * 0.65);
+        const headPt = this.spinePoint(0.24, breath);
+        const wShift = this.faceTurnX * 0.72;
+        const cos = Math.cos(this.headTilt);
+        const sin = Math.sin(this.headTilt);
+        const rotHead = (lx: number, ly: number): Vec2 => ({
+          x: headPt.x + lx * cos - ly * sin,
+          y: headPt.y + lx * sin + ly * cos,
+        });
+        const noseC = rotHead(wShift, 11);
+        const chinC = rotHead(wShift * 0.75, 41);
+        const headC = rotHead(0, -14);
+        const torsoC = this.spinePoint(0.72, breath);
+        return {
+          nose: { x: noseC.x, y: noseC.y, rx: 20, ry: 17 },
+          chin: { x: chinC.x, y: chinC.y, rx: 35, ry: 19 },
+          head: { x: headC.x, y: headC.y, rx: 58, ry: 38 },
+          body: { x: torsoC.x, y: torsoC.y, rx: 68, ry: 56 },
+          tailPts: this.liveTailCurvePts,
+        };
+      }
+
+      public hitTestCatZoneLogical(lx: number, ly: number): CatHitZone {
+        if (this.catBreed === 'dafeiyu') {
+          if (this.peekAmount > 0.35) {
+            const pivotX = this.keyboardLayout === '108' ? 268 : 192;
+            const pivotY = 176;
+            const dx = (lx - pivotX) / 94;
+            const dy = (ly - pivotY) / 104;
+            if (dx * dx + dy * dy <= 1.0) {
+              return 'head';
+            }
+          }
+          return null;
+        }
+        const z = this.getCatHitZonesLogical();
+        const inEllipse = (c: { x: number; y: number; rx: number; ry: number }) => {
+          const dx = (lx - c.x) / c.rx;
+          const dy = (ly - c.y) / c.ry;
+          return dx * dx + dy * dy <= 1.0;
+        };
+        if (inEllipse(z.nose)) return 'nose';
+        if (this.peekAmount < 0.55) {
+          for (const pt of z.tailPts) {
+            if (Math.hypot(lx - pt.x, ly - pt.y) <= 23) {
+              return 'tail';
+            }
+          }
+        }
+        if (inEllipse(z.chin)) return 'chin';
+        if (inEllipse(z.head)) return 'head';
+        if (inEllipse(z.body)) return 'body';
+        return null;
+      }
+
+      public hitTestCatZoneAtClientPoint(clientX: number, clientY: number): CatHitZone {
+        const pt = this.clientToLogical(clientX, clientY);
+        if (!pt) return null;
+        return this.hitTestCatZoneLogical(pt.x, pt.y);
+      }
+
+      public onCatTapAtClientPoint(clientX: number, clientY: number): CatHitZone {
+        const zone = this.hitTestCatZoneAtClientPoint(clientX, clientY);
+        if (!zone || this.privacyMode) return zone;
+        if (zone === 'nose') {
+          this.triggerBoopDemo();
+        } else if (zone === 'tail') {
+          this.triggerTailPokeDemo();
+        } else if (zone === 'chin') {
+          this.triggerChinScratchDemo(1700);
+        } else if (zone === 'head') {
+          this.wakeCat(performance.now(), 'gentle');
+          this.earTwitchLeft = 1;
+          this.earTwitchRight = 0.8;
+          this.petEnergy = Math.max(this.petEnergy, 0.55);
+          this.squashSpring.kick(1.2);
+        } else if (zone === 'body') {
+          this.wakeCat(performance.now(), 'gentle');
+          this.squashSpring.kick(1.8);
+          if (Math.random() < 0.5) this.earTwitchLeft = 1;
+          else this.earTwitchRight = 1;
+        }
+        return zone;
+      }
+
+      public setDragging(dragging: boolean, velX = 0): void {
+        const now = performance.now();
+        const wasActive = this.isDragging || now < this.scruffDemoUntil;
+        this.isDragging = Boolean(dragging);
+        if (dragging) {
+          this.scruffDemoUntil = -10000;
+          this.wakeCat(now, 'gentle');
+          this.wakeAt = -10000;
+          this.isCross = false;
+          this.annoy = 0;
+          this.idleAct = null;
+          this.curiousUntil = -10000;
+          this.scruffDragVelX = Math.max(-2.8, Math.min(2.8, velX));
+          if (!wasActive) {
+            this.scruffSpring.kick(2.6);
+            this.scruffSwingSpring.kick((Math.random() < 0.5 ? -1 : 1) * 1.9);
+          }
+          this.wakeAction(now);
+        } else {
+          this.scruffDemoUntil = -10000;
+          this.scruffDragVelX = 0;
+          if (wasActive && this.scruffAmount > 0.22) {
+            this.onScruffLand(now);
+          }
+          this.wakeAction(now);
+        }
+      }
+
+      public updateDragVelocity(velX: number): void {
+        if (!this.isDragging) return;
+        const clamped = Math.max(-2.8, Math.min(2.8, velX));
+        this.scruffDragVelX = this.scruffDragVelX * 0.40 + clamped * 0.60;
+        this.scruffSwingSpring.kick(-clamped * 2.1);
+        this.wakeAction();
+              }
+
+              private onScruffLand(now: number): void {
+                this.wakeAction(now);
+                this.squashSpring.kick(4.6);
+                this.deskHopSpring.kick(-16);
+                catAudio.playSoftLand();
+                const basePt = this.spinePoint(1.0, 0);
+                for (const s of [-1, 1] as const) {
+                  this.fxParticles.push({
+                    kind: 'dust',
+                    x: basePt.x + s * 44,
+                    y: basePt.y - 2,
+                    vx: s * 42,
+                    vy: -16 - Math.random() * 10,
+                    size: 6.2,
+                    createdAt: now,
+                    lifetime: 440,
+                  });
+                }
+              }
+
+              private shouldUseTailForKey(
     spec: KeySpec,
     targetPoint: Vec2,
     activelyMousing: boolean,
@@ -757,34 +1069,41 @@ export class KuroCatEngine {
   private crossSpring = new Spring(0, 1.9, 0.86);
   private deskHopSpring = new Spring(0, 9.2, 0.34);
   private headsetSpring = new Spring(0, 5.4, 0.70);
-  private headphonesOn = false;
+    private scruffSpring = new Spring(0, 5.0, 0.72);
+    private scruffSwingSpring = new Spring(0, 2.9, 0.24);
+    private tailRecoilSpring = new Spring(0, 7.6, 0.42);
+    private peekSpring = new Spring(0, 4.4, 0.72);
+    private peekHoverSpring = new Spring(0, 5.8, 0.74);
+    private headphonesOn = false;
 
   // Alive cat emotional state machine: curious (laser-pointer eyes), sleepy loaf (Zzz), idle fidgets, cross (airplane ears + tail desk-thump!)
   private lastInputAt = performance.now();
-  private asleep = false;
-  private sleepAmount = 0;
-  private wakeAt = -10000;
-  private nextZAt = 0;
-  private pointerSamples: Array<{ t: number; dist: number }> = [];
-  private lastPointerSampleX: number | null = null;
-  private lastPointerSampleY: number | null = null;
-  private lastPointerSampleAt = -10000;
-  private curiousUntil = -10000;
-  private curiousAmount = 0;
-  private annoy = 0;
-  private lastPokeAt = -10000;
-  private isCross = false;
-  private crossSince = -10000;
-  private crossAmount = 0;
-  private crossHuffDir: -1 | 1 = -1;
-  private thumpPhase = 0;
-  private thumpLift = 0;
-  private thumpLash = 0;
-  private lastSlamAt = -10000;
-  private deskHopY = 0;
-  private idleAct: IdleFidget | null = null;
-  private nextIdleActAt = performance.now() + 4500;
-  private fxParticles: CatFxParticle[] = [];
+    private asleep = false;
+    private sleepAmount = 0;
+    private breathPhase = 0;
+    private tailDriftPhase = 0;
+    private wakeAt = -10000;
+    private nextZAt = 0;
+    private pointerSamples: Array<{ t: number; dist: number }> = [];
+    private lastPointerSampleX: number | null = null;
+    private lastPointerSampleY: number | null = null;
+    private lastPointerSampleAt = -10000;
+    private curiousUntil = -10000;
+    private curiousAmount = 0;
+    private annoy = 0;
+    private lastPokeAt = -10000;
+    private isCross = false;
+    private crossSince = -10000;
+    private crossAmount = 0;
+    private crossHuffDir: -1 | 1 = -1;
+    private thumpPhase = 0;
+    private thumpLift = 0;
+    private thumpLash = 0;
+    private lastSlamAt = -10000;
+    private deskHopY = 0;
+    private idleAct: IdleFidget | null = null;
+    private nextIdleActAt = performance.now() + 4500;
+    private fxParticles: CatFxParticle[] = [];
 
   // Spine-shear deformation state (exact measured flexible cat spine + playful typing body/head sway!)
   private spineLean = 0;    // -1 (mouse lean: head shifts -46px left while hips stay anchored!) .. +1
@@ -799,8 +1118,46 @@ export class KuroCatEngine {
   private bodyBob = 0;
   private kbBounce = 0;
 
-  // Blinking, petting, ear micro-twitch, typing rhythm
-  private nextBlinkAt = 2.8;
+    // New rich idle vignettes (doze nod-off, yawn, stretch, groom face-wash, biscuit knead)
+    private dozeLidClose = 0;
+    private dozeNod = 0;
+    private dozeJoltFired = false;
+    private yawnAmount = 0;
+    private stretchAmount = 0;
+    private groomAmount = 0;
+    private groomLickAmount = 0;
+    private groomEarPressLeft = 0;
+    private groomEarPressRight = 0;
+    private groomSparkleSpawned = false;
+    private kneadAmount = 0;
+    private kneadPhase = 0;
+    private hadHeartyPet = false;
+    private petEndedAt = -10000;
+    private yawnDoneThisIdle = false;
+    private dozeDoneThisIdle = false;
+
+    // New interactive states: scruffed drag + body-zone boop / chin scratch / tail poke
+    private isDragging = false;
+    private scruffDemoUntil = -10000;
+    private scruffAmount = 0;
+    private scruffSwing = 0;
+    private scruffDragVelX = 0;
+    private boopStartAt = -10000;
+    private boopUntil = -10000;
+    private boopAmount = 0;
+    private boopCrossEye = 0;
+    private boopSneezeFired = false;
+    private boopShake = 0;
+    private chinScratchEnergy = 0;
+    private chinAmount = 0;
+    private nextHeartAt = 0;
+    private tailRecoil = 0;
+    private tailGlanceUntil = -10000;
+    private tailGlanceAmount = 0;
+    private tailPokeTimes: number[] = [];
+
+    // Blinking, petting, ear micro-twitch, typing rhythm
+    private nextBlinkAt = 2.8;
   private blinkProgress = 0;
   private isBlinking = false;
 
@@ -1280,13 +1637,80 @@ export class KuroCatEngine {
   }
 
   /** AI Companion trigger: playful single tail pat on Enter/Space. */
-  public triggerTailPatDemo(): void {
-    const vk = 0x0d;
-    this.onKeyDown(vk, false);
-    window.setTimeout(() => this.onKeyUp(vk), 170);
-  }
+    public triggerTailPatDemo(): void {
+      const vk = 0x0d;
+      this.onKeyDown(vk, false);
+      window.setTimeout(() => this.onKeyUp(vk), 170);
+    }
 
-  // ---- Flexible spine coordinate system (exact match to measured 0.3s -> 2.2s shear!) ----
+    /** Interactive demo trigger: boop nose -> cross-eyed sneeze + cute squish! */
+    public triggerBoopDemo(): void {
+      if (this.catBreed === 'dafeiyu' || this.privacyMode) return;
+      const now = performance.now();
+      this.wakeCat(now, 'gentle');
+      this.wakeAt = -10000;
+      this.isCross = false;
+      this.annoy = 0;
+      this.idleAct = null;
+      this.curiousUntil = -10000;
+      this.boopStartAt = now;
+      this.boopUntil = now + 1150;
+      this.boopSneezeFired = false;
+      this.squashSpring.kick(-1.5);
+      this.headTiltSpring.kick((Math.random() < 0.5 ? -1 : 1) * 1.15);
+      this.earTwitchLeft = 1;
+      this.earTwitchRight = 1;
+      catAudio.playBoopSneeze();
+      this.wakeAction(now);
+    }
+
+    /** Interactive demo trigger: blissful chin scratch with lifted chin, hearts & warm deeper purr! */
+    public triggerChinScratchDemo(durationMs = 2800): void {
+      if (this.catBreed === 'dafeiyu' || this.privacyMode) return;
+      const now = performance.now();
+      this.wakeCat(now, 'gentle');
+      this.wakeAt = -10000;
+      this.isCross = false;
+      this.annoy = 0;
+      this.idleAct = null;
+      this.curiousUntil = -10000;
+      this.chinScratchEnergy = Math.max(this.chinScratchEnergy, Math.min(3.5, 0.9 + durationMs / 1100));
+      this.nextHeartAt = Math.min(this.nextHeartAt, now + 80);
+      this.wakeAction(now);
+    }
+
+    /** Interactive demo trigger: poke tail -> instant recoil tuck + suspicious side-eye (3x within 6s = grumpy!) */
+    public triggerTailPokeDemo(): void {
+      if (this.catBreed === 'dafeiyu' || this.privacyMode) return;
+      const now = performance.now();
+      this.wakeCat(now, 'gentle');
+      this.wakeAt = -10000;
+      this.idleAct = null;
+      this.curiousUntil = -10000;
+      this.tailPokeTimes = this.tailPokeTimes.filter((t) => now - t < 6000);
+      this.tailPokeTimes.push(now);
+      this.tailRecoilSpring.kick(5.2);
+      this.tailGlanceUntil = now + 1550;
+      this.earTwitchRight = 1;
+      this.squashSpring.kick(-0.9);
+      const tip = this.liveTailCurvePts[this.liveTailCurvePts.length - 1] ?? {
+        x: this.catCenterX + 110,
+        y: this.catBaseY - 40,
+      };
+      this.fxParticles.push({
+        kind: 'dust',
+        x: tip.x,
+        y: tip.y - 8,
+        vx: 0,
+        vy: -12,
+        size: 4.2,
+        createdAt: now,
+        lifetime: 300,
+      });
+      this.wakeAction(now);
+    }
+
+    // ---- Flexible spine coordinate system (exact match to measured 0.3s -> 2.2s shear!) ----
 
   private spinePoint(t: number, breath: number): Vec2 {
     // t in [0..1]: 0 = ear tips, 1 = seated base on desk
