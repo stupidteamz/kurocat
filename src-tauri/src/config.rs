@@ -144,6 +144,18 @@ pub fn normalize_keyboard_orientation(raw: &str) -> String {
     }
 }
 
+pub fn default_keyboard_lang() -> String {
+    "en".to_string()
+}
+
+pub fn normalize_keyboard_lang(raw: &str) -> String {
+    if raw.trim() == "th" {
+        "th".to_string()
+    } else {
+        "en".to_string()
+    }
+}
+
 pub fn default_tail_key_mode() -> String {
     "smart".to_string()
 }
@@ -214,10 +226,12 @@ pub struct AppSettings {
     #[serde(default = "default_mcp_port")]
     pub mcp_port: u16,
     #[serde(default = "default_keyboard_layout")]
-    pub keyboard_layout: String,
-    #[serde(default = "default_keyboard_orientation")]
-    pub keyboard_orientation: String,
-    #[serde(default = "default_privacy_password_guard")]
+        pub keyboard_layout: String,
+        #[serde(default = "default_keyboard_orientation")]
+        pub keyboard_orientation: String,
+        #[serde(default = "default_keyboard_lang")]
+        pub keyboard_lang: String,
+        #[serde(default = "default_privacy_password_guard")]
     pub privacy_password_guard: bool,
     #[serde(default = "default_tail_key_mode")]
     pub tail_key_mode: String,
@@ -268,8 +282,9 @@ impl Default for AppSettings {
             mcp_enabled: default_mcp_enabled(),
             mcp_port: default_mcp_port(),
             keyboard_layout: default_keyboard_layout(),
-            keyboard_orientation: default_keyboard_orientation(),
-            privacy_password_guard: default_privacy_password_guard(),
+                    keyboard_orientation: default_keyboard_orientation(),
+                    keyboard_lang: default_keyboard_lang(),
+                    privacy_password_guard: default_privacy_password_guard(),
             tail_key_mode: default_tail_key_mode(),
             tail_key_ids: default_tail_key_ids(),
             obs_enabled: default_obs_enabled(),
@@ -322,15 +337,18 @@ pub fn load_settings() -> AppSettings {
     if let Ok(content) = fs::read_to_string(&path) {
         if let Ok(mut parsed) = serde_json::from_str::<AppSettings>(&content) {
             parsed.scale = parsed.scale.clamp(0.20, 1.50);
-            parsed.opacity = normalize_opacity(parsed.opacity);
-            parsed.tail_key_mode = normalize_tail_key_mode(&parsed.tail_key_mode);
-            parsed.tail_key_ids = normalize_tail_key_ids(&parsed.tail_key_ids);
-            parsed.render_mode = normalize_render_mode(&parsed.render_mode);
-            parsed.live_chroma_color = normalize_live_chroma_color(&parsed.live_chroma_color);
-            parsed.collar_color = normalize_collar_color(&parsed.collar_color);
-            parsed.headphone_mode = normalize_headphone_mode(&parsed.headphone_mode);
-            parsed.fps_cap = normalize_fps_cap(parsed.fps_cap);
-            parsed.language = normalize_language(&parsed.language);
+                        parsed.opacity = normalize_opacity(parsed.opacity);
+                        parsed.keyboard_layout = normalize_keyboard_layout(&parsed.keyboard_layout);
+                        parsed.keyboard_orientation = normalize_keyboard_orientation(&parsed.keyboard_orientation);
+                        parsed.keyboard_lang = normalize_keyboard_lang(&parsed.keyboard_lang);
+                        parsed.tail_key_mode = normalize_tail_key_mode(&parsed.tail_key_mode);
+                        parsed.tail_key_ids = normalize_tail_key_ids(&parsed.tail_key_ids);
+                        parsed.render_mode = normalize_render_mode(&parsed.render_mode);
+                        parsed.live_chroma_color = normalize_live_chroma_color(&parsed.live_chroma_color);
+                        parsed.collar_color = normalize_collar_color(&parsed.collar_color);
+                        parsed.headphone_mode = normalize_headphone_mode(&parsed.headphone_mode);
+                        parsed.fps_cap = normalize_fps_cap(parsed.fps_cap);
+                        parsed.language = normalize_language(&parsed.language);
             return parsed;
         }
     }

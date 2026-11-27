@@ -22,7 +22,7 @@ const WIN7_OFFSCREEN_PARK_POS: i32 = -16000;
 
 use cats::{all_cats, cat_exists, cats_path, sanitize_cat_id, CatSkinConfig};
 use config::{
-    config_path, load_settings, normalize_keyboard_layout, normalize_keyboard_orientation,
+    config_path, load_settings, normalize_keyboard_lang, normalize_keyboard_layout, normalize_keyboard_orientation,
     normalize_tail_key_ids, normalize_tail_key_mode, save_settings, set_windows_autostart,
     try_save_settings, AppSettings,
 };
@@ -633,8 +633,9 @@ fn update_settings(app: AppHandle, state: State<'_, AppState>, mut patch: AppSet
         patch.obs_hide_pet = false;
     }
     patch.keyboard_layout = normalize_keyboard_layout(&patch.keyboard_layout);
-    patch.keyboard_orientation = normalize_keyboard_orientation(&patch.keyboard_orientation);
-    patch.tail_key_mode = normalize_tail_key_mode(&patch.tail_key_mode);
+        patch.keyboard_orientation = normalize_keyboard_orientation(&patch.keyboard_orientation);
+        patch.keyboard_lang = normalize_keyboard_lang(&patch.keyboard_lang);
+        patch.tail_key_mode = normalize_tail_key_mode(&patch.tail_key_mode);
     patch.tail_key_ids = normalize_tail_key_ids(&patch.tail_key_ids);
     patch.render_mode = config::normalize_render_mode(&patch.render_mode);
     patch.collar_color = config::normalize_collar_color(&patch.collar_color);
